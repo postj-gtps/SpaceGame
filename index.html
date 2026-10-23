@@ -195,6 +195,22 @@
         </div>
     </div>
 
+    <!-- GAME OVER / HULL FAILURE OVERLAY -->
+    <div id="gameOverModal" class="absolute inset-0 bg-red-950/50 backdrop-blur-md z-30 flex items-center justify-center pointer-events-auto transition-all duration-300 hidden opacity-0">
+        <div class="hud-panel p-6 rounded-xl max-w-md text-center border-red-500/60 shadow-2xl bg-black/85">
+            <h2 class="text-2xl font-bold text-red-500 glow-red mb-1">CRITICAL HULL FAILURE</h2>
+            <p class="text-xs text-red-300/80 mb-4 font-mono">VESSEL DESTROYED IN SECTOR</p>
+            <div class="p-3 bg-red-950/30 rounded border border-red-900/50 text-slate-300 text-xs mb-5 font-mono flex flex-col gap-1">
+                <div class="flex justify-between"><span class="text-slate-400">LAST COORDS:</span><span id="deathCoords" class="text-cyan-300">X: 0 | Y: 0</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">CAUSE OF IMPACT:</span><span class="text-amber-400">COLLISION DAMAGE</span></div>
+            </div>
+            <button id="btnRestartGame" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg shadow-lg hover:shadow-red-500/50 transition-all transform active:scale-95 text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+                <span>RESPAWN & REROUTE POWER</span>
+                <span class="text-[10px] opacity-80">(Press R or Space)</span>
+            </button>
+        </div>
+    </div>
+
     <!-- MAIN JAVASCRIPT GAME LOGIC -->
     <script>
         /**
@@ -234,6 +250,10 @@
             maxAsteroids: 45,           // Target practice asteroid density
             maxDrones: 8                // Dynamic flying practice target drones
         };
+
+        // HUD Feature Display Toggles
+        let showGrid = true;
+        let showNebula = true;
 
         // --- AUDIO SYNTHESIZER (WEB AUDIO API) ---
         class SoundEngine {
@@ -317,7 +337,7 @@
                 if (this.ctx.state === 'suspended') this.ctx.resume();
 
                 // Noise buffer for blast crunch
-                const dur = isLarge ? 0.4 : 0.25;
+                const dur = isLarge ? 0.6 : 0.25;
                 const bufferSize = this.ctx.sampleRate * dur;
                 const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -330,11 +350,11 @@
 
                 const filter = this.ctx.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(isLarge ? 400 : 800, this.ctx.currentTime);
-                filter.frequency.linearRampToValueAtTime(60, this.ctx.currentTime + dur);
+                filter.frequency.setValueAtTime(isLarge ? 500 : 800, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + dur);
 
                 const gain = this.ctx.createGain();
-                gain.gain.setValueAtTime(isLarge ? 0.4 : 0.25, this.ctx.currentTime);
+                gain.gain.setValueAtTime(isLarge ? 0.5 : 0.25, this.ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
 
                 noise.connect(filter);
@@ -342,6 +362,27 @@
                 gain.connect(this.ctx.destination);
 
                 noise.start();
+            }
+
+            playShieldHit() {
+                if (!this.enabled || !this.ctx) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
             }
 
             playHitSound() {
@@ -379,6 +420,10 @@
 
         window.addEventListener('keydown', (e) => {
             if (e.repeat) return;
+            if (player.isDead && (e.code === 'KeyR' || e.code === 'Space')) {
+                restartGame();
+                return;
+            }
             switch (e.code) {
                 case 'KeyW': case 'ArrowUp': keys.forward = true; break;
                 case 'KeyS': case 'ArrowDown': keys.reverse = true; break;
@@ -399,50 +444,14 @@
             }
         });
 
-        // Mobile Touch Controls Event Listeners
-        const setupTouchButton = (id, keyName) => {
-            const btn = document.getElementById(id);
-            if (!btn) return;
-            const start = (e) => { e.preventDefault(); keys[keyName] = true; audio.init(); };
-            const end = (e) => { e.preventDefault(); keys[keyName] = false; };
-            btn.addEventListener('touchstart', start);
-            btn.addEventListener('touchend', end);
-            btn.addEventListener('mousedown', start);
-            btn.addEventListener('mouseup', end);
-        };
+        // --- SCREEN SHAKE CAMERA EFFECT ---
+        let shakeDuration = 0;
+        let shakeMagnitude = 0;
 
-        setupTouchButton('btnTouchThrust', 'forward');
-        setupTouchButton('btnTouchReverse', 'reverse');
-        setupTouchButton('btnTouchLeft', 'left');
-        setupTouchButton('btnTouchRight', 'right');
-        setupTouchButton('btnTouchFire', 'fire');
-
-        // HUD Toggle Buttons State
-        let showGrid = true;
-        let showNebula = true;
-
-        document.getElementById('btnGrid').addEventListener('click', (e) => {
-            showGrid = !showGrid;
-            e.target.innerText = `Grid: ${showGrid ? 'ON' : 'OFF'}`;
-            e.target.classList.toggle('bg-cyan-950/60', showGrid);
-            e.target.classList.toggle('bg-slate-900/60', !showGrid);
-        });
-
-        document.getElementById('btnNebula').addEventListener('click', (e) => {
-            showNebula = !showNebula;
-            e.target.innerText = `Nebula: ${showNebula ? 'ON' : 'OFF'}`;
-        });
-
-        document.getElementById('btnAudio').addEventListener('click', (e) => {
-            audio.enabled = !audio.enabled;
-            e.target.innerText = `Audio: ${audio.enabled ? 'ON' : 'OFF'}`;
-            if (!audio.enabled) audio.setThrust(false);
-        });
-
-        document.getElementById('btnStartGame').addEventListener('click', () => {
-            audio.init();
-            document.getElementById('audioStartPrompt').classList.add('opacity-0', 'pointer-events-none');
-        });
+        function triggerScreenShake(duration = 10, magnitude = 8) {
+            shakeDuration = duration;
+            shakeMagnitude = magnitude;
+        }
 
         // --- GAME OBJECT CLASSES ---
 
@@ -457,10 +466,93 @@
                 this.radius = 18;
                 this.lastShotTime = 0;
                 this.laserHeat = 0; // Heat percentage 0 to 100
+                this.maxShields = 100;
                 this.shields = 100;
+                this.lastDamageTime = 0;
+                this.rechargeDelay = 2200; // Milliseconds before shield recharge starts
+                this.rechargeRate = 0.35; // Shield percentage points restored per frame
+                this.invulnerableTimer = 0;
+                this.isDead = false;
+            }
+
+            reset() {
+                this.x = 0;
+                this.y = 0;
+                this.vx = 0;
+                this.vy = 0;
+                this.angle = -Math.PI / 2;
+                this.shields = this.maxShields;
+                this.laserHeat = 0;
+                this.isDead = false;
+                this.invulnerableTimer = 60; // 1 second grace period on respawn
+            }
+
+            takeDamage(amount, sourceX, sourceY, knockback = 5) {
+                if (this.isDead || this.invulnerableTimer > 0) return;
+
+                this.lastDamageTime = Date.now();
+                this.invulnerableTimer = 20; // Brief cooldown frame buffer between hits
+
+                // Knockback physics impulse
+                const hitAngle = Math.atan2(this.y - sourceY, this.x - sourceX);
+                this.vx += Math.cos(hitAngle) * knockback;
+                this.vy += Math.sin(hitAngle) * knockback;
+
+                triggerScreenShake(10, 10);
+
+                if (this.shields > 0) {
+                    this.shields = Math.max(0, this.shields - amount);
+                    audio.playShieldHit();
+
+                    // Emit shield impact energy sparks
+                    for (let i = 0; i < 15; i++) {
+                        particleSystem.emitSpark(
+                            this.x + (Math.random() - 0.5) * 20,
+                            this.y + (Math.random() - 0.5) * 20,
+                            (Math.random() - 0.5) * 6,
+                            (Math.random() - 0.5) * 6,
+                            '#00f0ff', 20
+                        );
+                    }
+
+                    if (this.shields === 0) {
+                        particleSystem.emitExplosion(this.x, this.y, 20, '#00ffff');
+                    }
+                } else {
+                    // Impact while shields are depleted = EXPLOSION
+                    this.explode();
+                }
+            }
+
+            explode() {
+                if (this.isDead) return;
+                this.isDead = true;
+
+                audio.playExplosion(true);
+                triggerScreenShake(24, 26);
+
+                // Multi-colored vessel debris & fireball explosion
+                particleSystem.emitExplosion(this.x, this.y, 50, '#ff4400');
+                particleSystem.emitExplosion(this.x, this.y, 30, '#ffcc00');
+                particleSystem.emitExplosion(this.x, this.y, 25, '#00f0ff');
+
+                setTimeout(() => {
+                    showGameOverModal();
+                }, 700);
             }
 
             update(deltaTime) {
+                if (this.isDead) return;
+
+                if (this.invulnerableTimer > 0) {
+                    this.invulnerableTimer--;
+                }
+
+                // Passive Shield Recharge
+                if (this.shields < this.maxShields && Date.now() - this.lastDamageTime > this.rechargeDelay) {
+                    this.shields = Math.min(this.maxShields, this.shields + this.rechargeRate);
+                }
+
                 // Angular Rotation (A & D keys)
                 if (keys.left) {
                     this.angle -= CONFIG.rotationSpeed;
@@ -586,16 +678,24 @@
             }
 
             draw(ctx) {
+                if (this.isDead) return;
+
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.angle);
 
+                // Invulnerability flicker
+                if (this.invulnerableTimer > 0 && Math.floor(Date.now() / 60) % 2 === 0) {
+                    ctx.globalAlpha = 0.5;
+                }
+
                 // Glowing Outer Shield Shell (if intact)
                 if (this.shields > 0) {
+                    const shieldRatio = this.shields / this.maxShields;
                     ctx.beginPath();
                     ctx.arc(0, 0, this.radius + 4, 0, Math.PI * 2);
-                    ctx.strokeStyle = `rgba(0, 240, 255, ${0.15 + (Math.sin(Date.now() * 0.005) * 0.08)})`;
-                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = `rgba(0, 240, 255, ${0.15 + (Math.sin(Date.now() * 0.005) * 0.08) * shieldRatio})`;
+                    ctx.lineWidth = 1.5 + shieldRatio;
                     ctx.stroke();
                 }
 
@@ -1013,6 +1113,33 @@
 
         // --- COLLISION DETECTION & PHYSICS ---
         function checkCollisions() {
+            // Player Collisions vs Asteroids & Drones
+            if (!player.isDead) {
+                for (const ast of asteroids) {
+                    const dist = Math.hypot(player.x - ast.x, player.y - ast.y);
+                    if (dist < player.radius + ast.radius) {
+                        const damage = ast.size === 3 ? 35 : ast.size === 2 ? 25 : 15;
+                        player.takeDamage(damage, ast.x, ast.y, 6);
+
+                        // Recoil asteroid
+                        const bounceAngle = Math.atan2(ast.y - player.y, ast.x - player.x);
+                        ast.vx += Math.cos(bounceAngle) * 3;
+                        ast.vy += Math.sin(bounceAngle) * 3;
+                    }
+                }
+
+                for (const drone of drones) {
+                    const dist = Math.hypot(player.x - drone.x, player.y - drone.y);
+                    if (dist < player.radius + drone.radius) {
+                        player.takeDamage(30, drone.x, drone.y, 7);
+
+                        const bounceAngle = Math.atan2(drone.y - player.y, drone.x - player.x);
+                        drone.vx += Math.cos(bounceAngle) * 4;
+                        drone.vy += Math.sin(bounceAngle) * 4;
+                    }
+                }
+            }
+
             // Projectiles vs Asteroids
             for (let pIdx = projectiles.length - 1; pIdx >= 0; pIdx--) {
                 const proj = projectiles[pIdx];
@@ -1124,18 +1251,20 @@
                 }
             }
 
-            // Center Player Blip (Cyan Arrow Heading)
-            radarCtx.save();
-            radarCtx.translate(center, center);
-            radarCtx.rotate(player.angle);
-            radarCtx.fillStyle = '#00f0ff';
-            radarCtx.beginPath();
-            radarCtx.moveTo(5, 0);
-            radarCtx.lineTo(-4, -3);
-            radarCtx.lineTo(-4, 3);
-            radarCtx.closePath();
-            radarCtx.fill();
-            radarCtx.restore();
+            // Center Player Blip (Cyan Arrow Heading) - drawn if vessel is active
+            if (!player.isDead) {
+                radarCtx.save();
+                radarCtx.translate(center, center);
+                radarCtx.rotate(player.angle);
+                radarCtx.fillStyle = '#00f0ff';
+                radarCtx.beginPath();
+                radarCtx.moveTo(5, 0);
+                radarCtx.lineTo(-4, -3);
+                radarCtx.lineTo(-4, 3);
+                radarCtx.closePath();
+                radarCtx.fill();
+                radarCtx.restore();
+            }
         }
 
         // --- HUD TELEMETRY UPDATE ---
@@ -1145,6 +1274,8 @@
         const thrustValEl = document.getElementById('thrustVal');
         const heatBarEl = document.getElementById('heatBar');
         const heatTextEl = document.getElementById('heatText');
+        const shieldBarEl = document.getElementById('shieldBar');
+        const shieldTextEl = document.getElementById('shieldText');
 
         function updateHUD() {
             const speed = Math.hypot(player.vx, player.vy);
@@ -1156,9 +1287,13 @@
             if (deg < 0) deg += 360;
             headingValEl.innerText = `${deg.toString().padStart(3, '0')}°`;
 
-            coordsValEl.innerText = `X: ${Math.round(player.x)} | Y: ${Math.round(player.y)}`;
+            // Scaled sector coordinate readings (1/100 scale)
+            const sectorX = Math.floor(player.x / 100);
+            const sectorY = Math.floor(player.y / 100);
+            coordsValEl.innerText = `X: ${sectorX} | Y: ${sectorY}`;
 
-            if (keys.forward) thrustValEl.innerText = 'FORWARD [100%]';
+            if (player.isDead) thrustValEl.innerText = 'OFFLINE';
+            else if (keys.forward) thrustValEl.innerText = 'FORWARD [100%]';
             else if (keys.reverse) thrustValEl.innerText = 'REVERSE [RCS]';
             else thrustValEl.innerText = 'IDLE (DRIFT)';
 
@@ -1173,7 +1308,101 @@
                 heatBarEl.classList.remove('bg-red-500');
                 heatBarEl.classList.add('bg-cyan-400');
             }
+
+            // Shield bar fill & warning color state
+            const shieldPct = Math.round(player.shields);
+            shieldBarEl.style.width = `${shieldPct}%`;
+            shieldTextEl.innerText = `${shieldPct}%`;
+            if (shieldPct < 30) {
+                shieldBarEl.classList.remove('bg-emerald-400', 'bg-amber-400');
+                shieldBarEl.classList.add('bg-red-500');
+            } else if (shieldPct < 70) {
+                shieldBarEl.classList.remove('bg-emerald-400', 'bg-red-500');
+                shieldBarEl.classList.add('bg-amber-400');
+            } else {
+                shieldBarEl.classList.remove('bg-amber-400', 'bg-red-500');
+                shieldBarEl.classList.add('bg-emerald-400');
+            }
         }
+
+        // --- GAME OVER MODAL & RESPAWN CONTROLLER ---
+        const gameOverModal = document.getElementById('gameOverModal');
+        const deathCoordsEl = document.getElementById('deathCoords');
+        const btnRestartGame = document.getElementById('btnRestartGame');
+
+        function showGameOverModal() {
+            deathCoordsEl.innerText = `X: ${Math.floor(player.x / 100)} | Y: ${Math.floor(player.y / 100)}`;
+            gameOverModal.classList.remove('hidden');
+            setTimeout(() => {
+                gameOverModal.classList.remove('opacity-0');
+            }, 10);
+        }
+
+        function restartGame() {
+            gameOverModal.classList.add('opacity-0');
+            setTimeout(() => {
+                gameOverModal.classList.add('hidden');
+            }, 300);
+            player.reset();
+        }
+
+        btnRestartGame.addEventListener('click', restartGame);
+
+        // --- HUD TOGGLES & INTERACTIVE UI BUTTONS ---
+        const btnGrid = document.getElementById('btnGrid');
+        const btnNebula = document.getElementById('btnNebula');
+        const btnAudio = document.getElementById('btnAudio');
+        const btnStartGame = document.getElementById('btnStartGame');
+        const audioStartPrompt = document.getElementById('audioStartPrompt');
+
+        if (btnGrid) {
+            btnGrid.addEventListener('click', () => {
+                showGrid = !showGrid;
+                btnGrid.innerText = `Grid: ${showGrid ? 'ON' : 'OFF'}`;
+            });
+        }
+
+        if (btnNebula) {
+            btnNebula.addEventListener('click', () => {
+                showNebula = !showNebula;
+                btnNebula.innerText = `Nebula: ${showNebula ? 'ON' : 'OFF'}`;
+            });
+        }
+
+        if (btnAudio) {
+            btnAudio.addEventListener('click', () => {
+                audio.enabled = !audio.enabled;
+                btnAudio.innerText = `Audio: ${audio.enabled ? 'ON' : 'OFF'}`;
+            });
+        }
+
+        if (btnStartGame && audioStartPrompt) {
+            btnStartGame.addEventListener('click', () => {
+                audio.init();
+                audioStartPrompt.classList.add('opacity-0');
+                setTimeout(() => {
+                    audioStartPrompt.classList.add('hidden');
+                }, 300);
+            });
+        }
+
+        // Mobile Touch Control Bindings
+        const bindTouchBtn = (id, keyName) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            const start = (e) => { e.preventDefault(); keys[keyName] = true; audio.init(); };
+            const end = (e) => { e.preventDefault(); keys[keyName] = false; };
+            btn.addEventListener('touchstart', start, { passive: false });
+            btn.addEventListener('touchend', end, { passive: false });
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+            btn.addEventListener('mouseleave', end);
+        };
+        bindTouchBtn('btnTouchThrust', 'forward');
+        bindTouchBtn('btnTouchReverse', 'reverse');
+        bindTouchBtn('btnTouchLeft', 'left');
+        bindTouchBtn('btnTouchRight', 'right');
+        bindTouchBtn('btnTouchFire', 'fire');
 
         // --- MAIN GAME LOOP ---
         let lastTime = performance.now();
@@ -1214,9 +1443,18 @@
             // Draw Background Stars (Parallax relative to camera)
             starfield.draw(ctx, player.x, player.y);
 
-            // CAMERA TRANSFORM (Center view on Player Ship)
+            // CAMERA TRANSFORM (Center view on Player Ship with dynamic camera shake)
             ctx.save();
-            ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
+
+            let shakeX = 0;
+            let shakeY = 0;
+            if (shakeDuration > 0) {
+                shakeX = (Math.random() - 0.5) * shakeMagnitude;
+                shakeY = (Math.random() - 0.5) * shakeMagnitude;
+                shakeDuration--;
+            }
+
+            ctx.translate(canvas.width / 2 - player.x + shakeX, canvas.height / 2 - player.y + shakeY);
 
             // Draw Sector Grid & Nebulae
             nebula.draw(ctx);
