@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Solar Winds - 2D Space Flight & Combat</title>
+    <title>Solar Winds - Dynamic Asset Library Engine</title>
     <!-- Tailwind CSS for HUD UI -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* CSS Reset & Canvas Setup */
         * {
             box-sizing: border-box;
             user-select: none;
@@ -30,7 +29,6 @@
             background: #000;
             cursor: crosshair;
         }
-        /* Custom Glowing & Retro Glassmorphism styling */
         .hud-panel {
             background: rgba(4, 12, 24, 0.75);
             backdrop-filter: blur(8px);
@@ -43,10 +41,6 @@
         .glow-red {
             text-shadow: 0 0 8px rgba(255, 50, 50, 0.8);
         }
-        .glow-border {
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
-        }
-        /* Custom scrollbar for control guide */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -54,7 +48,6 @@
             background: rgba(0, 240, 255, 0.4);
             border-radius: 2px;
         }
-        /* Mobile touch button ripple */
         .touch-btn {
             touch-action: manipulation;
         }
@@ -65,14 +58,14 @@
 </head>
 <body class="select-none overflow-hidden bg-black text-cyan-400">
 
-    <!-- Main Rendering Canvas -->
+    <!-- Canvas viewport -->
     <canvas id="gameCanvas"></canvas>
 
     <!-- TOP-LEFT: TELEMETRY & COMPASS HUD -->
     <div class="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 w-64">
         <div class="hud-panel p-3 rounded-lg text-xs flex flex-col gap-1">
             <div class="flex justify-between items-center border-b border-cyan-500/30 pb-1 mb-1">
-                <span class="font-bold tracking-widest text-cyan-300 glow-text">SOLAR WINDS v1.0</span>
+                <span id="shipNameDisplay" class="font-bold tracking-widest text-cyan-300 glow-text">SF-77 VANGUARD</span>
                 <span id="fpsDisplay" class="text-[10px] text-cyan-500">60 FPS</span>
             </div>
             <div class="flex justify-between">
@@ -97,7 +90,7 @@
         <div class="hud-panel p-3 rounded-lg text-xs flex flex-col gap-2">
             <div>
                 <div class="flex justify-between mb-1">
-                    <span class="text-slate-400 text-[10px]">LASER CAPACITOR HEAT</span>
+                    <span class="text-slate-400 text-[10px]">PLASMA CANNON HEAT</span>
                     <span id="heatText" class="text-[10px] text-cyan-300 font-bold">0%</span>
                 </div>
                 <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-cyan-500/30">
@@ -121,7 +114,7 @@
         <div class="hud-panel p-2 rounded-lg flex flex-col items-center">
             <div class="text-[10px] font-bold tracking-wider text-cyan-400 mb-1 flex justify-between w-full px-1">
                 <span>TACTICAL RADAR</span>
-                <span class="text-slate-400">2000m RANGE</span>
+                <span class="text-slate-400">2200m RANGE</span>
             </div>
             <canvas id="radarCanvas" width="160" height="160" class="rounded border border-cyan-500/40 bg-slate-950/80"></canvas>
         </div>
@@ -156,15 +149,11 @@
                     <kbd class="px-1.5 py-0.5 bg-cyan-900/50 border border-cyan-500/40 rounded text-cyan-200">SPACEBAR</kbd> Fire Plasma Blaster
                 </div>
             </div>
-            <div class="mt-2 text-[10px] text-slate-400 italic">
-                Destroy asteroids & floating drones. Reverse thrust (S) applies backward RCS braking & acceleration.
-            </div>
         </div>
     </div>
 
-    <!-- TOUCH CONTROLS FOR MOBILE DEVICIES (Autodetected or visible on touch) -->
+    <!-- TOUCH CONTROLS FOR MOBILE DEVICES -->
     <div id="touchControls" class="absolute bottom-4 left-0 right-0 px-4 flex justify-between items-end z-20 pointer-events-none hidden sm:hidden">
-        <!-- Directional D-Pad Left/Right + Reverse/Forward -->
         <div class="flex flex-col gap-2 pointer-events-auto">
             <div class="flex justify-center">
                 <button id="btnTouchThrust" class="touch-btn w-14 h-14 bg-cyan-950/80 border-2 border-cyan-400/60 rounded-full flex items-center justify-center text-cyan-300 font-bold active:bg-cyan-500 text-lg">W</button>
@@ -175,27 +164,25 @@
                 <button id="btnTouchRight" class="touch-btn w-14 h-14 bg-cyan-950/80 border-2 border-cyan-400/60 rounded-full flex items-center justify-center text-cyan-300 font-bold active:bg-cyan-500 text-lg">D</button>
             </div>
         </div>
-
-        <!-- Action Button (Fire) -->
         <div class="pointer-events-auto pb-2">
             <button id="btnTouchFire" class="touch-btn w-20 h-20 bg-red-950/80 border-2 border-red-500/80 rounded-full flex items-center justify-center text-red-300 font-bold active:bg-red-600 text-sm glow-red">FIRE</button>
         </div>
     </div>
 
-    <!-- CENTER AUDIO UNMUTE OVERLAY NOTIFICATION -->
+    <!-- START PROMPT -->
     <div id="audioStartPrompt" class="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex items-center justify-center pointer-events-auto transition-opacity duration-300">
         <div class="hud-panel p-6 rounded-xl max-w-md text-center border-cyan-400/50 shadow-2xl">
-            <h2 class="text-xl font-bold text-cyan-300 glow-text mb-2">SOLAR WINDS PROOF OF CONCEPT</h2>
+            <h2 class="text-xl font-bold text-cyan-300 glow-text mb-2">ASSET LIBRARY PROOF OF CONCEPT</h2>
             <p class="text-xs text-slate-300 mb-6 leading-relaxed">
-                Experience top-down inertial space mechanics inspired by the 1993 classic. Controls: <strong class="text-cyan-300">WASD</strong> to pilot, <strong class="text-cyan-300">Spacebar</strong> to shoot.
+                Loaded ship asset <strong class="text-cyan-300">SF-77 Vanguard</strong> from catalog configuration. Controls: <strong class="text-cyan-300">WASD</strong> to pilot, <strong class="text-cyan-300">Spacebar</strong> to shoot.
             </p>
             <button id="btnStartGame" class="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-all transform active:scale-95 text-sm uppercase tracking-wider">
-                Initialize Systems
+                Initialize Flight Computer
             </button>
         </div>
     </div>
 
-    <!-- GAME OVER / HULL FAILURE OVERLAY -->
+    <!-- GAME OVER OVERLAY -->
     <div id="gameOverModal" class="absolute inset-0 bg-red-950/50 backdrop-blur-md z-30 flex items-center justify-center pointer-events-auto transition-all duration-300 hidden opacity-0">
         <div class="hud-panel p-6 rounded-xl max-w-md text-center border-red-500/60 shadow-2xl bg-black/85">
             <h2 class="text-2xl font-bold text-red-500 glow-red mb-1">CRITICAL HULL FAILURE</h2>
@@ -211,20 +198,101 @@
         </div>
     </div>
 
-    <!-- MAIN JAVASCRIPT GAME LOGIC -->
+    <!-- GAME ENGINE LOGIC -->
     <script>
         /**
-         * Solar Winds Space Flight Simulator & Combat Engine
-         * Clean modular JavaScript standard ES6 implementation.
+         * Dynamic Asset Pipeline Engine
          */
 
-        // --- GLOBAL CANVAS & CONTEXT SETUP ---
+        // --- ASSET MANAGER & CATALOG PIPELINE ---
+        class AssetManager {
+            static shipsCatalog = {};
+            static loadedImages = {};
+            static isReady = false;
+
+            // Embedded fallback dataset for file:// protocol local execution
+            static fallbackCatalog = {
+                "starter_ship": {
+                    "id": "starter_ship",
+                    "name": "SF-77 Vanguard",
+                    "description": "Standard issue heavy fighter equipped with dual wing-mounted plasma cannons and tri-jet sublight thrusters.",
+                    "sprite": {
+                        "src": "assets/images/ships/ship-starter.png",
+                        "scale": 0.055,
+                        "rotationOffset": 180
+                    },
+                    "stats": {
+                        "maxSpeed": 14,
+                        "thrustPower": 0.18,
+                        "reverseThrustPower": 0.10,
+                        "rotationSpeed": 0.065,
+                        "maxShields": 100,
+                        "laserCooldown": 110,
+                        "laserHeatLimit": 95,
+                        "collisionRadius": 22
+                    },
+                    "anchors": {
+                        "muzzles": [
+                            { "x": 28, "y": -8 },
+                            { "x": 28, "y": 8 }
+                        ],
+                        "thrusters": [
+                            { "x": -22, "y": -12, "color": "#00f0ff" },
+                            { "x": -26, "y": 0, "color": "#00f0ff" },
+                            { "x": -22, "y": 12, "color": "#00f0ff" }
+                        ],
+                        "rcsJets": [
+                            { "x": 15, "y": -14, "color": "#ff9900" },
+                            { "x": 15, "y": 14, "color": "#ff9900" }
+                        ]
+                    }
+                }
+            };
+
+            static async init() {
+                try {
+                    const res = await fetch('assets/data/ships.json');
+                    if (!res.ok) throw new Error('HTTP status ' + res.status);
+                    this.shipsCatalog = await res.json();
+                } catch (e) {
+                    console.warn("Could not fetch assets/data/ships.json (running on file:// or missing file). Using catalog fallback.", e);
+                    this.shipsCatalog = this.fallbackCatalog;
+                }
+
+                // Preload ship sprite textures
+                const loadPromises = [];
+                for (const key in this.shipsCatalog) {
+                    const ship = this.shipsCatalog[key];
+                    if (ship.sprite && ship.sprite.src) {
+                        const img = new Image();
+                        img.src = ship.sprite.src;
+                        this.loadedImages[key] = img;
+                        loadPromises.push(new Promise((resolve) => {
+                            img.onload = resolve;
+                            img.onerror = resolve; // Continue even if asset missing
+                        }));
+                    }
+                }
+
+                await Promise.all(loadPromises);
+                this.isReady = true;
+            }
+
+            static getShip(id) {
+                return this.shipsCatalog[id] || this.shipsCatalog["starter_ship"] || this.fallbackCatalog["starter_ship"];
+            }
+
+            static getShipImage(id) {
+                return this.loadedImages[id];
+            }
+        }
+
+        // --- GLOBAL CANVAS SETUP ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const radarCanvas = document.getElementById('radarCanvas');
         const radarCtx = radarCanvas.getContext('2d');
 
-        // Resize Canvas to fill screen seamlessly
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -232,37 +300,27 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Mobile touch controls detection
         if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
             document.getElementById('touchControls').classList.remove('hidden');
         }
 
-        // --- GAME SETTINGS & CONFIGURATION ---
         const CONFIG = {
-            worldSize: 10000,           // Infinite sector boundaries (wrap/clamp)
-            maxSpeed: 14,               // Max ship velocity
-            thrustPower: 0.18,          // Forward engine acceleration force
-            reverseThrustPower: 0.10,   // Reverse thrusters acceleration force
-            rotationSpeed: 0.065,       // Turning rate in radians/frame
-            drag: 0.994,                // Space friction/momentum dampener
-            laserSpeed: 20,             // Laser projectile base muzzle velocity
-            laserCooldown: 120,         // Milliseconds between laser shots
-            maxAsteroids: 45,           // Target practice asteroid density
-            maxDrones: 8                // Dynamic flying practice target drones
+            worldSize: 10000,
+            drag: 0.994,
+            laserSpeed: 20,
+            maxAsteroids: 45,
+            maxDrones: 8
         };
 
-        // HUD Feature Display Toggles
         let showGrid = true;
         let showNebula = true;
 
-        // --- AUDIO SYNTHESIZER (WEB AUDIO API) ---
+        // --- AUDIO SYNTHESIZER ---
         class SoundEngine {
             constructor() {
                 this.ctx = null;
                 this.enabled = true;
-                this.thrustOsc = null;
                 this.thrustGain = null;
-                this.isThrustPlaying = false;
             }
 
             init() {
@@ -272,13 +330,12 @@
                     this.ctx = new AudioCtx();
                     this.setupThrustSynth();
                 } catch (e) {
-                    console.warn("Web Audio API not supported", e);
+                    console.warn("Web Audio API unavailable", e);
                 }
             }
 
             setupThrustSynth() {
                 if (!this.ctx) return;
-                // Create filtered white noise + low rumble generator for continuous thrust sound
                 const bufferSize = this.ctx.sampleRate * 2;
                 const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const output = noiseBuffer.getChannelData(0);
@@ -306,7 +363,6 @@
             setThrust(active, intensity = 1.0) {
                 if (!this.enabled || !this.ctx || !this.thrustGain) return;
                 if (this.ctx.state === 'suspended') this.ctx.resume();
-
                 const targetGain = active ? 0.15 * intensity : 0.0;
                 this.thrustGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
             }
@@ -336,7 +392,6 @@
                 if (!this.enabled || !this.ctx) return;
                 if (this.ctx.state === 'suspended') this.ctx.resume();
 
-                // Noise buffer for blast crunch
                 const dur = isLarge ? 0.6 : 0.25;
                 const bufferSize = this.ctx.sampleRate * dur;
                 const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -409,14 +464,8 @@
 
         const audio = new SoundEngine();
 
-        // --- INPUT STATE CONTROLLER ---
-        const keys = {
-            forward: false,
-            reverse: false,
-            left: false,
-            right: false,
-            fire: false
-        };
+        // --- INPUT CONTROLLER ---
+        const keys = { forward: false, reverse: false, left: false, right: false, fire: false };
 
         window.addEventListener('keydown', (e) => {
             if (e.repeat) return;
@@ -444,35 +493,38 @@
             }
         });
 
-        // --- SCREEN SHAKE CAMERA EFFECT ---
+        // --- CAMERA SHAKE ---
         let shakeDuration = 0;
         let shakeMagnitude = 0;
-
         function triggerScreenShake(duration = 10, magnitude = 8) {
             shakeDuration = duration;
             shakeMagnitude = magnitude;
         }
 
-        // --- GAME OBJECT CLASSES ---
-
-        // 1. PLAYER SPACESHIP (Solar Winds Vector Style)
+        // --- PLAYER SHIP CLASS DECOUPLED FROM HARDCODED SHAPES ---
         class PlayerShip {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
                 this.vx = 0;
                 this.vy = 0;
-                this.angle = -Math.PI / 2; // Facing straight UP initially
-                this.radius = 18;
+                this.angle = -Math.PI / 2;
+                this.activeShipId = 'starter_ship';
+
                 this.lastShotTime = 0;
-                this.laserHeat = 0; // Heat percentage 0 to 100
+                this.laserHeat = 0;
                 this.maxShields = 100;
                 this.shields = 100;
                 this.lastDamageTime = 0;
-                this.rechargeDelay = 2200; // Milliseconds before shield recharge starts
-                this.rechargeRate = 0.35; // Shield percentage points restored per frame
+                this.rechargeDelay = 2200;
+                this.rechargeRate = 0.35;
                 this.invulnerableTimer = 0;
                 this.isDead = false;
+                this.muzzleIndex = 0;
+            }
+
+            get config() {
+                return AssetManager.getShip(this.activeShipId);
             }
 
             reset() {
@@ -481,19 +533,18 @@
                 this.vx = 0;
                 this.vy = 0;
                 this.angle = -Math.PI / 2;
-                this.shields = this.maxShields;
+                this.shields = this.config.stats.maxShields;
                 this.laserHeat = 0;
                 this.isDead = false;
-                this.invulnerableTimer = 60; // 1 second grace period on respawn
+                this.invulnerableTimer = 60;
             }
 
             takeDamage(amount, sourceX, sourceY, knockback = 5) {
                 if (this.isDead || this.invulnerableTimer > 0) return;
 
                 this.lastDamageTime = Date.now();
-                this.invulnerableTimer = 20; // Brief cooldown frame buffer between hits
+                this.invulnerableTimer = 20;
 
-                // Knockback physics impulse
                 const hitAngle = Math.atan2(this.y - sourceY, this.x - sourceX);
                 this.vx += Math.cos(hitAngle) * knockback;
                 this.vy += Math.sin(hitAngle) * knockback;
@@ -504,7 +555,6 @@
                     this.shields = Math.max(0, this.shields - amount);
                     audio.playShieldHit();
 
-                    // Emit shield impact energy sparks
                     for (let i = 0; i < 15; i++) {
                         particleSystem.emitSpark(
                             this.x + (Math.random() - 0.5) * 20,
@@ -519,7 +569,6 @@
                         particleSystem.emitExplosion(this.x, this.y, 20, '#00ffff');
                     }
                 } else {
-                    // Impact while shields are depleted = EXPLOSION
                     this.explode();
                 }
             }
@@ -531,7 +580,6 @@
                 audio.playExplosion(true);
                 triggerScreenShake(24, 26);
 
-                // Multi-colored vessel debris & fireball explosion
                 particleSystem.emitExplosion(this.x, this.y, 50, '#ff4400');
                 particleSystem.emitExplosion(this.x, this.y, 30, '#ffcc00');
                 particleSystem.emitExplosion(this.x, this.y, 25, '#00f0ff');
@@ -541,137 +589,133 @@
                 }, 700);
             }
 
+            // Transform local anchor point relative to ship heading angle
+            getLocalAnchorWorldPos(localX, localY) {
+                const cos = Math.cos(this.angle);
+                const sin = Math.sin(this.angle);
+                return {
+                    x: this.x + cos * localX - sin * localY,
+                    y: this.y + sin * localX + cos * localY
+                };
+            }
+
             update(deltaTime) {
                 if (this.isDead) return;
 
-                if (this.invulnerableTimer > 0) {
-                    this.invulnerableTimer--;
+                const cfg = this.config;
+                const stats = cfg.stats;
+
+                if (this.invulnerableTimer > 0) this.invulnerableTimer--;
+
+                if (this.shields < stats.maxShields && Date.now() - this.lastDamageTime > this.rechargeDelay) {
+                    this.shields = Math.min(stats.maxShields, this.shields + this.rechargeRate);
                 }
 
-                // Passive Shield Recharge
-                if (this.shields < this.maxShields && Date.now() - this.lastDamageTime > this.rechargeDelay) {
-                    this.shields = Math.min(this.maxShields, this.shields + this.rechargeRate);
-                }
+                if (keys.left) this.angle -= stats.rotationSpeed;
+                if (keys.right) this.angle += stats.rotationSpeed;
 
-                // Angular Rotation (A & D keys)
-                if (keys.left) {
-                    this.angle -= CONFIG.rotationSpeed;
-                }
-                if (keys.right) {
-                    this.angle += CONFIG.rotationSpeed;
-                }
-
-                // Vector Direction unit components
                 const dirX = Math.cos(this.angle);
                 const dirY = Math.sin(this.angle);
 
                 let thrusting = false;
 
-                // Main Forward Thrust (W key)
+                // Forward Thrust & Thruster Plume Particles
                 if (keys.forward) {
-                    this.vx += dirX * CONFIG.thrustPower;
-                    this.vy += dirY * CONFIG.thrustPower;
+                    this.vx += dirX * stats.thrustPower;
+                    this.vy += dirY * stats.thrustPower;
                     thrusting = true;
 
-                    // Emit Forward Thruster Particles (exhaust out the rear)
-                    particleSystem.emitThrust(
-                        this.x - dirX * 16,
-                        this.y - dirY * 16,
-                        -dirX * 4 + (Math.random() - 0.5) * 1.5 + this.vx * 0.2,
-                        -dirY * 4 + (Math.random() - 0.5) * 1.5 + this.vy * 0.2,
-                        '#00f0ff'
-                    );
+                    if (cfg.anchors && cfg.anchors.thrusters) {
+                        for (const t of cfg.anchors.thrusters) {
+                            const pos = this.getLocalAnchorWorldPos(t.x, t.y);
+                            particleSystem.emitThrust(
+                                pos.x, pos.y,
+                                -dirX * 4 + (Math.random() - 0.5) * 1.5 + this.vx * 0.2,
+                                -dirY * 4 + (Math.random() - 0.5) * 1.5 + this.vy * 0.2,
+                                t.color || '#00f0ff'
+                            );
+                        }
+                    }
                 }
 
-                // Reverse Thrust (S key)
+                // Reverse Thrust & RCS Particles
                 if (keys.reverse) {
-                    this.vx -= dirX * CONFIG.reverseThrustPower;
-                    this.vy -= dirY * CONFIG.reverseThrustPower;
+                    this.vx -= dirX * stats.reverseThrustPower;
+                    this.vy -= dirY * stats.reverseThrustPower;
                     thrusting = true;
 
-                    // Emit RCS Maneuvering Jets (exhaust out the front nozzles)
-                    particleSystem.emitThrust(
-                        this.x + dirX * 12 + Math.cos(this.angle + Math.PI/2)*8,
-                        this.y + dirY * 12 + Math.sin(this.angle + Math.PI/2)*8,
-                        dirX * 2 + (Math.random() - 0.5),
-                        dirY * 2 + (Math.random() - 0.5),
-                        '#ff9900'
-                    );
-                    particleSystem.emitThrust(
-                        this.x + dirX * 12 - Math.cos(this.angle + Math.PI/2)*8,
-                        this.y + dirY * 12 - Math.sin(this.angle + Math.PI/2)*8,
-                        dirX * 2 + (Math.random() - 0.5),
-                        dirY * 2 + (Math.random() - 0.5),
-                        '#ff9900'
-                    );
+                    if (cfg.anchors && cfg.anchors.rcsJets) {
+                        for (const rcs of cfg.anchors.rcsJets) {
+                            const pos = this.getLocalAnchorWorldPos(rcs.x, rcs.y);
+                            particleSystem.emitThrust(
+                                pos.x, pos.y,
+                                dirX * 2 + (Math.random() - 0.5),
+                                dirY * 2 + (Math.random() - 0.5),
+                                rcs.color || '#ff9900'
+                            );
+                        }
+                    }
                 }
 
-                // Sound state for engine thrust
                 audio.setThrust(thrusting, keys.forward ? 1.0 : 0.6);
 
-                // Space Momentum & Drag Friction
                 this.vx *= CONFIG.drag;
                 this.vy *= CONFIG.drag;
 
-                // Speed Cap Limit
                 const speed = Math.hypot(this.vx, this.vy);
-                if (speed > CONFIG.maxSpeed) {
-                    this.vx = (this.vx / speed) * CONFIG.maxSpeed;
-                    this.vy = (this.vy / speed) * CONFIG.maxSpeed;
+                if (speed > stats.maxSpeed) {
+                    this.vx = (this.vx / speed) * stats.maxSpeed;
+                    this.vy = (this.vy / speed) * stats.maxSpeed;
                 }
 
-                // Apply Velocity Position step
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // Sector Wraparound Boundaries
                 const halfWorld = CONFIG.worldSize / 2;
                 if (this.x > halfWorld) this.x = -halfWorld;
                 if (this.x < -halfWorld) this.x = halfWorld;
                 if (this.y > halfWorld) this.y = -halfWorld;
                 if (this.y < -halfWorld) this.y = halfWorld;
 
-                // Weapon firing logic
-                if (keys.fire) {
-                    this.shoot();
-                }
+                if (keys.fire) this.shoot();
 
-                // Laser Heat dissipate over time
                 this.laserHeat = Math.max(0, this.laserHeat - 0.4);
             }
 
             shoot() {
                 const now = Date.now();
-                if (now - this.lastShotTime >= CONFIG.laserCooldown && this.laserHeat < 95) {
+                const cfg = this.config;
+                const stats = cfg.stats;
+
+                if (now - this.lastShotTime >= stats.laserCooldown && this.laserHeat < stats.laserHeatLimit) {
                     this.lastShotTime = now;
-                    this.laserHeat = Math.min(100, this.laserHeat + 12);
+                    this.laserHeat = Math.min(100, this.laserHeat + 10);
 
                     const dirX = Math.cos(this.angle);
                     const dirY = Math.sin(this.angle);
 
-                    // Muzzle exit position (front nose tip)
-                    const muzzleX = this.x + dirX * (this.radius + 6);
-                    const muzzleY = this.y + dirY * (this.radius + 6);
+                    const muzzles = cfg.anchors && cfg.anchors.muzzles ? cfg.anchors.muzzles : [{ x: 25, y: 0 }];
 
-                    // Laser velocity = Ship velocity + Muzzle Speed
-                    const projVx = this.vx + dirX * CONFIG.laserSpeed;
-                    const projVy = this.vy + dirY * CONFIG.laserSpeed;
+                    // Fire simultaneously or alternate between muzzles
+                    for (const m of muzzles) {
+                        const muzzlePos = this.getLocalAnchorWorldPos(m.x, m.y);
+                        const projVx = this.vx + dirX * CONFIG.laserSpeed;
+                        const projVy = this.vy + dirY * CONFIG.laserSpeed;
 
-                    projectiles.push(new LaserProjectile(muzzleX, muzzleY, projVx, projVy, this.angle));
+                        projectiles.push(new LaserProjectile(muzzlePos.x, muzzlePos.y, projVx, projVy, this.angle));
 
-                    // Dynamic recoil nudge
+                        for (let i = 0; i < 4; i++) {
+                            particleSystem.emitSpark(
+                                muzzlePos.x, muzzlePos.y,
+                                dirX * 3 + (Math.random() - 0.5) * 2,
+                                dirY * 3 + (Math.random() - 0.5) * 2,
+                                '#00ffff', 15
+                            );
+                        }
+                    }
+
                     this.vx -= dirX * 0.15;
                     this.vy -= dirY * 0.15;
-
-                    // Muzzle flash visual particle effect
-                    for (let i = 0; i < 6; i++) {
-                        particleSystem.emitSpark(
-                            muzzleX, muzzleY,
-                            dirX * 3 + (Math.random() - 0.5) * 2,
-                            dirY * 3 + (Math.random() - 0.5) * 2,
-                            '#00ffff', 15
-                        );
-                    }
 
                     audio.playLaser();
                 }
@@ -680,71 +724,62 @@
             draw(ctx) {
                 if (this.isDead) return;
 
+                const cfg = this.config;
+                const img = AssetManager.getShipImage(this.activeShipId);
+
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.angle);
 
-                // Invulnerability flicker
                 if (this.invulnerableTimer > 0 && Math.floor(Date.now() / 60) % 2 === 0) {
                     ctx.globalAlpha = 0.5;
                 }
 
-                // Glowing Outer Shield Shell (if intact)
-                if (this.shields > 0) {
-                    const shieldRatio = this.shields / this.maxShields;
+                // Render Sprite Graphic if loaded
+                if (img && img.complete && img.naturalWidth !== 0) {
+                    ctx.save();
+                    // Apply Catalog Rotation Offset (180 deg for left-facing image)
+                    const rotOffset = (cfg.sprite.rotationOffset || 0) * Math.PI / 180;
+                    ctx.rotate(rotOffset);
+
+                    const w = img.width * cfg.sprite.scale;
+                    const h = img.height * cfg.sprite.scale;
+
+                    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+                    ctx.restore();
+                } else {
+                    // Retro Vector Fallback if texture loading
                     ctx.beginPath();
-                    ctx.arc(0, 0, this.radius + 4, 0, Math.PI * 2);
+                    ctx.moveTo(22, 0);
+                    ctx.lineTo(-14, 16);
+                    ctx.lineTo(-10, 8);
+                    ctx.lineTo(-16, 5);
+                    ctx.lineTo(-16, -5);
+                    ctx.lineTo(-10, -8);
+                    ctx.lineTo(-14, -16);
+                    ctx.closePath();
+                    ctx.fillStyle = '#061325';
+                    ctx.fill();
+                    ctx.strokeStyle = '#00f0ff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Glowing Outer Shield Shell
+                if (this.shields > 0) {
+                    const shieldRatio = this.shields / cfg.stats.maxShields;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, cfg.stats.collisionRadius + 4, 0, Math.PI * 2);
                     ctx.strokeStyle = `rgba(0, 240, 255, ${0.15 + (Math.sin(Date.now() * 0.005) * 0.08) * shieldRatio})`;
                     ctx.lineWidth = 1.5 + shieldRatio;
                     ctx.stroke();
                 }
 
-                // Ship Hull Outline Path (Retro 90s Vector Graphic aesthetics)
-                ctx.beginPath();
-                // Nose Tip
-                ctx.moveTo(22, 0);
-                // Right Wingtip
-                ctx.lineTo(-14, 16);
-                // Right Rear Notch
-                ctx.lineTo(-10, 8);
-                // Rear Center Engine Notch
-                ctx.lineTo(-16, 5);
-                ctx.lineTo(-16, -5);
-                // Left Rear Notch
-                ctx.lineTo(-10, -8);
-                // Left Wingtip
-                ctx.lineTo(-14, -16);
-                ctx.closePath();
-
-                // Dark Metallic Hull Fill
-                ctx.fillStyle = '#061325';
-                ctx.fill();
-
-                // Glowing Cyan Vector Borders
-                ctx.strokeStyle = '#00f0ff';
-                ctx.lineWidth = 2;
-                ctx.shadowColor = '#00f0ff';
-                ctx.shadowBlur = 10;
-                ctx.stroke();
-
-                // Cockpit Glass Canopy
-                ctx.beginPath();
-                ctx.ellipse(3, 0, 7, 3.5, 0, 0, Math.PI * 2);
-                ctx.fillStyle = '#003366';
-                ctx.fill();
-                ctx.strokeStyle = '#66ffff';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                // Engine Nozzles Details
-                ctx.fillStyle = '#ff9900';
-                ctx.fillRect(-16, -4, 2, 8);
-
                 ctx.restore();
             }
         }
 
-        // 2. LASER PROJECTILES
+        // --- PROJECTILES, ASTEROIDS, DRONES, PARTICLES ---
         class LaserProjectile {
             constructor(x, y, vx, vy, angle) {
                 this.x = x;
@@ -753,7 +788,7 @@
                 this.vy = vy;
                 this.angle = angle;
                 this.life = 0;
-                this.maxLife = 55; // Frames before despawning
+                this.maxLife = 55;
                 this.radius = 3;
             }
 
@@ -762,7 +797,6 @@
                 this.y += this.vy;
                 this.life++;
 
-                // Spawn glowing plasma trail particles
                 if (this.life % 2 === 0) {
                     particleSystem.emitSpark(
                         this.x, this.y,
@@ -778,7 +812,6 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.angle);
 
-                // Laser Beam Vector Capsule
                 ctx.beginPath();
                 ctx.moveTo(-10, 0);
                 ctx.lineTo(10, 0);
@@ -792,19 +825,17 @@
             }
         }
 
-        // 3. TARGET ASTEROIDS (Interactive Destructible Objects)
         class Asteroid {
             constructor(x, y, size = 3) {
                 this.x = x;
                 this.y = y;
-                this.size = size; // 3 = Large, 2 = Medium, 1 = Small
+                this.size = size;
                 this.radius = size * 16;
                 this.vx = (Math.random() - 0.5) * (4 / size);
                 this.vy = (Math.random() - 0.5) * (4 / size);
                 this.angle = Math.random() * Math.PI * 2;
                 this.rotSpeed = (Math.random() - 0.5) * 0.03;
 
-                // Procedurally generated jagged outline points
                 this.numPoints = 8 + Math.floor(Math.random() * 5);
                 this.offsets = [];
                 for (let i = 0; i < this.numPoints; i++) {
@@ -817,7 +848,6 @@
                 this.y += this.vy;
                 this.angle += this.rotSpeed;
 
-                // Sector Wraparound
                 const halfWorld = CONFIG.worldSize / 2;
                 if (this.x > halfWorld) this.x = -halfWorld;
                 if (this.x < -halfWorld) this.x = halfWorld;
@@ -851,7 +881,6 @@
             }
         }
 
-        // 4. FLYING TARGET DRONE (AI Practice Targets)
         class TargetDrone {
             constructor(x, y) {
                 this.x = x;
@@ -864,12 +893,10 @@
             }
 
             update(player) {
-                // Smooth wandering movement AI
                 this.angle += 0.02;
                 this.vx += Math.cos(this.angle) * 0.05;
                 this.vy += Math.sin(this.angle) * 0.05;
 
-                // Speed dampening
                 const spd = Math.hypot(this.vx, this.vy);
                 if (spd > 3) {
                     this.vx = (this.vx / spd) * 3;
@@ -885,7 +912,6 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.angle);
 
-                // Rotating Pulsing Target Ring
                 ctx.beginPath();
                 ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
                 ctx.strokeStyle = '#ff3366';
@@ -894,7 +920,6 @@
                 ctx.shadowBlur = 8;
                 ctx.stroke();
 
-                // Crosshairs
                 ctx.beginPath();
                 ctx.moveTo(-this.radius - 4, 0); ctx.lineTo(this.radius + 4, 0);
                 ctx.moveTo(0, -this.radius - 4); ctx.lineTo(0, this.radius + 4);
@@ -905,7 +930,6 @@
             }
         }
 
-        // 5. DYNAMIC PARTICLE SYSTEM (Sparks, Exhaust, Rock Debris)
         class ParticleSystem {
             constructor() {
                 this.particles = [];
@@ -913,8 +937,7 @@
 
             emitThrust(x, y, vx, vy, color) {
                 this.particles.push({
-                    x, y, vx, vy,
-                    color,
+                    x, y, vx, vy, color,
                     life: 1.0,
                     decay: 0.04 + Math.random() * 0.03,
                     size: 2 + Math.random() * 3
@@ -923,8 +946,7 @@
 
             emitSpark(x, y, vx, vy, color, maxFrames = 25) {
                 this.particles.push({
-                    x, y, vx, vy,
-                    color,
+                    x, y, vx, vy, color,
                     life: 1.0,
                     decay: 1 / maxFrames,
                     size: 1 + Math.random() * 2
@@ -953,10 +975,7 @@
                     p.x += p.vx;
                     p.y += p.vy;
                     p.life -= p.decay;
-
-                    if (p.life <= 0) {
-                        this.particles.splice(i, 1);
-                    }
+                    if (p.life <= 0) this.particles.splice(i, 1);
                 }
             }
 
@@ -975,7 +994,7 @@
             }
         }
 
-        // --- ENVIRONMENT & PARALLAX BACKGROUND LAYERS ---
+        // --- ENVIRONMENT & PARALLAX ---
         class Starfield {
             constructor(count = 350) {
                 this.stars = [];
@@ -984,12 +1003,11 @@
                         x: (Math.random() - 0.5) * CONFIG.worldSize,
                         y: (Math.random() - 0.5) * CONFIG.worldSize,
                         size: Math.random() * 1.8 + 0.4,
-                        layer: Math.random(), // Parallax depth factor (0.1 = far, 0.9 = close)
+                        layer: Math.random(),
                         color: ['#ffffff', '#88dffc', '#ffd480', '#e0c2ff'][Math.floor(Math.random() * 4)]
                     });
                 }
 
-                // Foreground Space Dust Particles for high velocity depth
                 this.dust = [];
                 for (let i = 0; i < 60; i++) {
                     this.dust.push({
@@ -1001,13 +1019,9 @@
             }
 
             draw(ctx, camX, camY) {
-                // Parallax Layer Stars
                 for (const star of this.stars) {
-                    // Offset based on parallax layer depth
                     const px = star.x - camX * star.layer;
                     const py = star.y - camY * star.layer;
-
-                    // Screen wrap calculations for continuous starry expanse
                     const screenX = ((px % canvas.width) + canvas.width) % canvas.width;
                     const screenY = ((py % canvas.height) + canvas.height) % canvas.height;
 
@@ -1017,22 +1031,17 @@
             }
 
             drawDust(ctx, player) {
-                // Speed dust floating in camera view
                 ctx.fillStyle = 'rgba(200, 240, 255, 0.4)';
                 for (const d of this.dust) {
-                    // Dust moves inverse to camera motion for real velocity feel
                     let dx = (d.x - player.x) % canvas.width;
                     let dy = (d.y - player.y) % canvas.height;
-
                     if (dx < 0) dx += canvas.width;
                     if (dy < 0) dy += canvas.height;
-
                     ctx.fillRect(dx, dy, d.size, d.size);
                 }
             }
         }
 
-        // Procedural Gas Nebula Renderer
         class NebulaRenderer {
             constructor() {
                 this.clouds = [
@@ -1056,10 +1065,8 @@
             }
         }
 
-        // Grid Sector Overlay
         function drawSectorGrid(ctx, camX, camY) {
             if (!showGrid) return;
-
             const gridSize = 300;
             const startX = Math.floor((camX - canvas.width / 2) / gridSize) * gridSize;
             const endX = startX + canvas.width + gridSize * 2;
@@ -1076,14 +1083,12 @@
                 ctx.lineTo(x, endY);
                 ctx.stroke();
             }
-
             for (let y = startY; y <= endY; y += gridSize) {
                 ctx.beginPath();
                 ctx.moveTo(startX, y);
                 ctx.lineTo(endX, y);
                 ctx.stroke();
             }
-
             ctx.restore();
         }
 
@@ -1097,31 +1102,29 @@
         const asteroids = [];
         const drones = [];
 
-        // Spawn Initial Sector Asteroids
         for (let i = 0; i < CONFIG.maxAsteroids; i++) {
             const dist = 300 + Math.random() * (CONFIG.worldSize / 2 - 400);
             const angle = Math.random() * Math.PI * 2;
             asteroids.push(new Asteroid(Math.cos(angle) * dist, Math.sin(angle) * dist, Math.floor(Math.random() * 3) + 1));
         }
 
-        // Spawn Target Drones
         for (let i = 0; i < CONFIG.maxDrones; i++) {
             const dist = 400 + Math.random() * 2000;
             const angle = Math.random() * Math.PI * 2;
             drones.push(new TargetDrone(Math.cos(angle) * dist, Math.sin(angle) * dist));
         }
 
-        // --- COLLISION DETECTION & PHYSICS ---
+        // --- PHYSICS & COLLISIONS ---
         function checkCollisions() {
-            // Player Collisions vs Asteroids & Drones
             if (!player.isDead) {
+                const radius = player.config.stats.collisionRadius || 20;
+
                 for (const ast of asteroids) {
                     const dist = Math.hypot(player.x - ast.x, player.y - ast.y);
-                    if (dist < player.radius + ast.radius) {
+                    if (dist < radius + ast.radius) {
                         const damage = ast.size === 3 ? 35 : ast.size === 2 ? 25 : 15;
                         player.takeDamage(damage, ast.x, ast.y, 6);
 
-                        // Recoil asteroid
                         const bounceAngle = Math.atan2(ast.y - player.y, ast.x - player.x);
                         ast.vx += Math.cos(bounceAngle) * 3;
                         ast.vy += Math.sin(bounceAngle) * 3;
@@ -1130,7 +1133,7 @@
 
                 for (const drone of drones) {
                     const dist = Math.hypot(player.x - drone.x, player.y - drone.y);
-                    if (dist < player.radius + drone.radius) {
+                    if (dist < radius + drone.radius) {
                         player.takeDamage(30, drone.x, drone.y, 7);
 
                         const bounceAngle = Math.atan2(drone.y - player.y, drone.x - player.x);
@@ -1140,7 +1143,6 @@
                 }
             }
 
-            // Projectiles vs Asteroids
             for (let pIdx = projectiles.length - 1; pIdx >= 0; pIdx--) {
                 const proj = projectiles[pIdx];
 
@@ -1149,11 +1151,9 @@
                     const dist = Math.hypot(proj.x - ast.x, proj.y - ast.y);
 
                     if (dist < ast.radius + proj.radius) {
-                        // Hit confirmed!
                         particleSystem.emitExplosion(proj.x, proj.y, 12, '#00ffff');
                         projectiles.splice(pIdx, 1);
 
-                        // Split Asteroids into smaller fragments
                         if (ast.size > 1) {
                             asteroids.push(new Asteroid(ast.x, ast.y, ast.size - 1));
                             asteroids.push(new Asteroid(ast.x, ast.y, ast.size - 1));
@@ -1168,7 +1168,6 @@
                 }
             }
 
-            // Projectiles vs Target Drones
             for (let pIdx = projectiles.length - 1; pIdx >= 0; pIdx--) {
                 const proj = projectiles[pIdx];
 
@@ -1186,7 +1185,6 @@
                             particleSystem.emitExplosion(drone.x, drone.y, 40, '#ff9900');
                             drones.splice(dIdx, 1);
 
-                            // Respawn new target drone in distance
                             setTimeout(() => {
                                 const angle = Math.random() * Math.PI * 2;
                                 drones.push(new TargetDrone(player.x + Math.cos(angle) * 1200, player.y + Math.sin(angle) * 1200));
@@ -1200,16 +1198,15 @@
             }
         }
 
-        // --- RADAR HUD RENDERING ---
+        // --- RADAR HUD ---
         function drawRadar() {
             const rWidth = radarCanvas.width;
             const rHeight = radarCanvas.height;
             const center = rWidth / 2;
-            const range = 2200; // Radar scan distance
+            const range = 2200;
 
             radarCtx.clearRect(0, 0, rWidth, rHeight);
 
-            // Radar Grid Rings
             radarCtx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
             radarCtx.lineWidth = 1;
             radarCtx.beginPath();
@@ -1217,7 +1214,6 @@
             radarCtx.arc(center, center, center * 0.8, 0, Math.PI * 2);
             radarCtx.stroke();
 
-            // Radar Sweep Cone Line
             const sweepAngle = (Date.now() * 0.003) % (Math.PI * 2);
             radarCtx.beginPath();
             radarCtx.moveTo(center, center);
@@ -1225,7 +1221,6 @@
             radarCtx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
             radarCtx.stroke();
 
-            // Render Asteroid Blips
             radarCtx.fillStyle = '#6688aa';
             for (const ast of asteroids) {
                 const dx = ast.x - player.x;
@@ -1237,7 +1232,6 @@
                 }
             }
 
-            // Render Target Drone Blips (Pulsing Red)
             radarCtx.fillStyle = '#ff3366';
             for (const drone of drones) {
                 const dx = drone.x - player.x;
@@ -1251,7 +1245,6 @@
                 }
             }
 
-            // Center Player Blip (Cyan Arrow Heading) - drawn if vessel is active
             if (!player.isDead) {
                 radarCtx.save();
                 radarCtx.translate(center, center);
@@ -1267,7 +1260,7 @@
             }
         }
 
-        // --- HUD TELEMETRY UPDATE ---
+        // --- HUD TELEMETRY ---
         const speedValEl = document.getElementById('speedVal');
         const headingValEl = document.getElementById('headingVal');
         const coordsValEl = document.getElementById('coordsVal');
@@ -1276,28 +1269,26 @@
         const heatTextEl = document.getElementById('heatText');
         const shieldBarEl = document.getElementById('shieldBar');
         const shieldTextEl = document.getElementById('shieldText');
+        const shipNameDisplay = document.getElementById('shipNameDisplay');
 
         function updateHUD() {
-            const speed = Math.hypot(player.vx, player.vy);
-            const speedKnots = (speed * 15).toFixed(1);
-            speedValEl.innerText = `${speedKnots} kn`;
+            const cfg = player.config;
+            shipNameDisplay.innerText = cfg.name.toUpperCase();
 
-            // Heading Angle Conversion (0 to 360 deg)
+            const speed = Math.hypot(player.vx, player.vy);
+            speedValEl.innerText = `${(speed * 15).toFixed(1)} kn`;
+
             let deg = Math.round((player.angle * (180 / Math.PI) + 90) % 360);
             if (deg < 0) deg += 360;
             headingValEl.innerText = `${deg.toString().padStart(3, '0')}°`;
 
-            // Scaled sector coordinate readings (1/100 scale)
-            const sectorX = Math.floor(player.x / 100);
-            const sectorY = Math.floor(player.y / 100);
-            coordsValEl.innerText = `X: ${sectorX} | Y: ${sectorY}`;
+            coordsValEl.innerText = `X: ${Math.floor(player.x / 100)} | Y: ${Math.floor(player.y / 100)}`;
 
             if (player.isDead) thrustValEl.innerText = 'OFFLINE';
             else if (keys.forward) thrustValEl.innerText = 'FORWARD [100%]';
             else if (keys.reverse) thrustValEl.innerText = 'REVERSE [RCS]';
             else thrustValEl.innerText = 'IDLE (DRIFT)';
 
-            // Heat bar fill
             const heatPct = Math.round(player.laserHeat);
             heatBarEl.style.width = `${heatPct}%`;
             heatTextEl.innerText = `${heatPct}%`;
@@ -1309,8 +1300,7 @@
                 heatBarEl.classList.add('bg-cyan-400');
             }
 
-            // Shield bar fill & warning color state
-            const shieldPct = Math.round(player.shields);
+            const shieldPct = Math.round((player.shields / cfg.stats.maxShields) * 100);
             shieldBarEl.style.width = `${shieldPct}%`;
             shieldTextEl.innerText = `${shieldPct}%`;
             if (shieldPct < 30) {
@@ -1325,7 +1315,7 @@
             }
         }
 
-        // --- GAME OVER MODAL & RESPAWN CONTROLLER ---
+        // --- GAME OVER & RESTART ---
         const gameOverModal = document.getElementById('gameOverModal');
         const deathCoordsEl = document.getElementById('deathCoords');
         const btnRestartGame = document.getElementById('btnRestartGame');
@@ -1333,60 +1323,41 @@
         function showGameOverModal() {
             deathCoordsEl.innerText = `X: ${Math.floor(player.x / 100)} | Y: ${Math.floor(player.y / 100)}`;
             gameOverModal.classList.remove('hidden');
-            setTimeout(() => {
-                gameOverModal.classList.remove('opacity-0');
-            }, 10);
+            setTimeout(() => { gameOverModal.classList.remove('opacity-0'); }, 10);
         }
 
         function restartGame() {
             gameOverModal.classList.add('opacity-0');
-            setTimeout(() => {
-                gameOverModal.classList.add('hidden');
-            }, 300);
+            setTimeout(() => { gameOverModal.classList.add('hidden'); }, 300);
             player.reset();
         }
 
         btnRestartGame.addEventListener('click', restartGame);
 
-        // --- HUD TOGGLES & INTERACTIVE UI BUTTONS ---
-        const btnGrid = document.getElementById('btnGrid');
-        const btnNebula = document.getElementById('btnNebula');
-        const btnAudio = document.getElementById('btnAudio');
+        // --- HUD TOGGLES & TOUCH BINDINGS ---
+        document.getElementById('btnGrid').addEventListener('click', function() {
+            showGrid = !showGrid;
+            this.innerText = `Grid: ${showGrid ? 'ON' : 'OFF'}`;
+        });
+
+        document.getElementById('btnNebula').addEventListener('click', function() {
+            showNebula = !showNebula;
+            this.innerText = `Nebula: ${showNebula ? 'ON' : 'OFF'}`;
+        });
+
+        document.getElementById('btnAudio').addEventListener('click', function() {
+            audio.enabled = !audio.enabled;
+            this.innerText = `Audio: ${audio.enabled ? 'ON' : 'OFF'}`;
+        });
+
         const btnStartGame = document.getElementById('btnStartGame');
         const audioStartPrompt = document.getElementById('audioStartPrompt');
+        btnStartGame.addEventListener('click', () => {
+            audio.init();
+            audioStartPrompt.classList.add('opacity-0');
+            setTimeout(() => { audioStartPrompt.classList.add('hidden'); }, 300);
+        });
 
-        if (btnGrid) {
-            btnGrid.addEventListener('click', () => {
-                showGrid = !showGrid;
-                btnGrid.innerText = `Grid: ${showGrid ? 'ON' : 'OFF'}`;
-            });
-        }
-
-        if (btnNebula) {
-            btnNebula.addEventListener('click', () => {
-                showNebula = !showNebula;
-                btnNebula.innerText = `Nebula: ${showNebula ? 'ON' : 'OFF'}`;
-            });
-        }
-
-        if (btnAudio) {
-            btnAudio.addEventListener('click', () => {
-                audio.enabled = !audio.enabled;
-                btnAudio.innerText = `Audio: ${audio.enabled ? 'ON' : 'OFF'}`;
-            });
-        }
-
-        if (btnStartGame && audioStartPrompt) {
-            btnStartGame.addEventListener('click', () => {
-                audio.init();
-                audioStartPrompt.classList.add('opacity-0');
-                setTimeout(() => {
-                    audioStartPrompt.classList.add('hidden');
-                }, 300);
-            });
-        }
-
-        // Mobile Touch Control Bindings
         const bindTouchBtn = (id, keyName) => {
             const btn = document.getElementById(id);
             if (!btn) return;
@@ -1404,24 +1375,20 @@
         bindTouchBtn('btnTouchRight', 'right');
         bindTouchBtn('btnTouchFire', 'fire');
 
-        // --- MAIN GAME LOOP ---
+        // --- MAIN LOOP ---
         let lastTime = performance.now();
         let frameCount = 0;
-        let fps = 60;
         const fpsDisplay = document.getElementById('fpsDisplay');
 
         function gameLoop(currentTime) {
             const deltaTime = (currentTime - lastTime) / 1000;
             lastTime = currentTime;
 
-            // FPS Counter
             frameCount++;
             if (frameCount % 30 === 0) {
-                fps = Math.round(1 / deltaTime);
-                fpsDisplay.innerText = `${fps} FPS`;
+                fpsDisplay.innerText = `${Math.round(1 / deltaTime)} FPS`;
             }
 
-            // 1. UPDATE STATE
             player.update(deltaTime);
 
             for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -1437,17 +1404,12 @@
 
             checkCollisions();
 
-            // 2. RENDER SCENE
+            // Render World
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Background Stars (Parallax relative to camera)
             starfield.draw(ctx, player.x, player.y);
 
-            // CAMERA TRANSFORM (Center view on Player Ship with dynamic camera shake)
             ctx.save();
-
-            let shakeX = 0;
-            let shakeY = 0;
+            let shakeX = 0, shakeY = 0;
             if (shakeDuration > 0) {
                 shakeX = (Math.random() - 0.5) * shakeMagnitude;
                 shakeY = (Math.random() - 0.5) * shakeMagnitude;
@@ -1456,11 +1418,9 @@
 
             ctx.translate(canvas.width / 2 - player.x + shakeX, canvas.height / 2 - player.y + shakeY);
 
-            // Draw Sector Grid & Nebulae
             nebula.draw(ctx);
             drawSectorGrid(ctx, player.x, player.y);
 
-            // Draw Game World Entities
             for (const ast of asteroids) ast.draw(ctx);
             for (const drone of drones) drone.draw(ctx);
             for (const proj of projectiles) proj.draw(ctx);
@@ -1469,7 +1429,6 @@
 
             ctx.restore();
 
-            // Draw Foreground Viewport Particles & HUD
             starfield.drawDust(ctx, player);
             drawRadar();
             updateHUD();
@@ -1477,8 +1436,10 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Start game loop when window loads
-        window.onload = function() {
+        // Preload asset catalog before initializing game loop
+        window.onload = async function() {
+            await AssetManager.init();
+            player.reset();
             requestAnimationFrame(gameLoop);
         };
     </script>
