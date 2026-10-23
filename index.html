@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solar Winds - 2D Space Flight & Combat</title>
+    <!-- Tailwind CSS for HUD UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS Reset & Canvas Setup */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #02040a;
+            font-family: 'Courier New', Courier, monospace;
+            color: #00f0ff;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            cursor: crosshair;
+        }
+        /* Custom Glowing & Retro Glassmorphism styling */
+        .hud-panel {
+            background: rgba(4, 12, 24, 0.75);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15), inset 0 0 10px rgba(0, 240, 255, 0.05);
+        }
+        .glow-text {
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+        }
+        .glow-red {
+            text-shadow: 0 0 8px rgba(255, 50, 50, 0.8);
+        }
+        .glow-border {
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+        }
+        /* Custom scrollbar for control guide */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 240, 255, 0.4);
+            border-radius: 2px;
+        }
+        /* Mobile touch button ripple */
+        .touch-btn {
+            touch-action: manipulation;
+        }
+        .touch-btn:active {
+            background-color: rgba(0, 240, 255, 0.4) !important;
+        }
+    </style>
+</head>
+<body class="select-none overflow-hidden bg-black text-cyan-400">
+
+    <!-- Main Rendering Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- TOP-LEFT: TELEMETRY & COMPASS HUD -->
+    <div class="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 w-64">
+        <div class="hud-panel p-3 rounded-lg text-xs flex flex-col gap-1">
+            <div class="flex justify-between items-center border-b border-cyan-500/30 pb-1 mb-1">
+                <span class="font-bold tracking-widest text-cyan-300 glow-text">SOLAR WINDS v1.0</span>
+                <span id="fpsDisplay" class="text-[10px] text-cyan-500">60 FPS</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">SPEED:</span>
+                <span id="speedVal" class="font-mono text-cyan-300 font-bold">0.0 kn</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">HEADING:</span>
+                <span id="headingVal" class="font-mono text-cyan-300">000° (N)</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">SECTOR COORD:</span>
+                <span id="coordsVal" class="font-mono text-cyan-300">X: 0 | Y: 0</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">THRUSTER VEL:</span>
+                <span id="thrustVal" class="font-mono text-cyan-300">IDLE</span>
+            </div>
+        </div>
+
+        <!-- WEAPON / ENERGY GAUGES -->
+        <div class="hud-panel p-3 rounded-lg text-xs flex flex-col gap-2">
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-400 text-[10px]">LASER CAPACITOR HEAT</span>
+                    <span id="heatText" class="text-[10px] text-cyan-300 font-bold">0%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-cyan-500/30">
+                    <div id="heatBar" class="h-full bg-cyan-400 transition-all duration-75 w-0"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-400 text-[10px]">DEFLECTOR SHIELDS</span>
+                    <span id="shieldText" class="text-[10px] text-cyan-300 font-bold">100%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-cyan-500/30">
+                    <div id="shieldBar" class="h-full bg-emerald-400 transition-all duration-75 w-full"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP-RIGHT: RADAR & MINIMAP HUD -->
+    <div class="absolute top-4 right-4 flex flex-col items-end gap-2 z-10">
+        <div class="hud-panel p-2 rounded-lg flex flex-col items-center">
+            <div class="text-[10px] font-bold tracking-wider text-cyan-400 mb-1 flex justify-between w-full px-1">
+                <span>TACTICAL RADAR</span>
+                <span class="text-slate-400">2000m RANGE</span>
+            </div>
+            <canvas id="radarCanvas" width="160" height="160" class="rounded border border-cyan-500/40 bg-slate-950/80"></canvas>
+        </div>
+
+        <!-- CONTROL TOGGLE BUTTONS -->
+        <div class="hud-panel p-2 rounded-lg flex gap-2 text-xs pointer-events-auto">
+            <button id="btnGrid" class="px-2 py-1 bg-cyan-950/60 hover:bg-cyan-800/50 border border-cyan-500/40 rounded text-cyan-300 transition text-[11px]">
+                Grid: ON
+            </button>
+            <button id="btnNebula" class="px-2 py-1 bg-cyan-950/60 hover:bg-cyan-800/50 border border-cyan-500/40 rounded text-cyan-300 transition text-[11px]">
+                Nebula: ON
+            </button>
+            <button id="btnAudio" class="px-2 py-1 bg-cyan-950/60 hover:bg-cyan-800/50 border border-cyan-500/40 rounded text-cyan-300 transition text-[11px]">
+                Audio: ON
+            </button>
+        </div>
+    </div>
+
+    <!-- BOTTOM-LEFT: CONTROLS & MANUAL OVERLAY -->
+    <div class="absolute bottom-4 left-4 z-10 pointer-events-none hidden sm:block">
+        <div class="hud-panel p-3 rounded-lg text-xs w-72">
+            <div class="font-bold text-cyan-300 mb-1 border-b border-cyan-500/30 pb-1 flex justify-between">
+                <span>FLIGHT COMPUTER CONTROLS</span>
+                <span class="text-amber-400 text-[10px]">WASD MODE</span>
+            </div>
+            <div class="grid grid-cols-2 gap-y-1 gap-x-2 text-[11px] text-slate-300">
+                <div><kbd class="px-1 py-0.5 bg-cyan-900/50 border border-cyan-500/40 rounded text-cyan-200">W</kbd> Thrust Forward</div>
+                <div><kbd class="px-1 py-0.5 bg-cyan-900/50 border border-cyan-500/40 rounded text-cyan-200">S</kbd> Reverse Thrusters</div>
+                <div><kbd class="px-1 py-0.5 bg-cyan-900/50 border border-cyan-500/40 rounded text-cyan-200">A</kbd> Rotate Left</div>
+                <div><kbd class="px-1 py-0.5 bg-cyan-900/50 border border-cyan-500/40 rounded text-cyan-200">D</kbd> Rotate Right</div>
+                <div class="col-span-2 mt-1">
+                    <kbd class="px-1.5 py-0.5 bg-cyan-900/50 border border-cyan-500/40 rounded text-cyan-200">SPACEBAR</kbd> Fire Plasma Blaster
+                </div>
+            </div>
+            <div class="mt-2 text-[10px] text-slate-400 italic">
+                Destroy asteroids & floating drones. Reverse thrust (S) applies backward RCS braking & acceleration.
+            </div>
+        </div>
+    </div>
+
+    <!-- TOUCH CONTROLS FOR MOBILE DEVICIES (Autodetected or visible on touch) -->
+    <div id="touchControls" class="absolute bottom-4 left-0 right-0 px-4 flex justify-between items-end z-20 pointer-events-none hidden sm:hidden">
+        <!-- Directional D-Pad Left/Right + Reverse/Forward -->
+        <div class="flex flex-col gap-2 pointer-events-auto">
+            <div class="flex justify-center">
+                <button id="btnTouchThrust" class="touch-btn w-14 h-14 bg-cyan-950/80 border-2 border-cyan-400/60 rounded-full flex items-center justify-center text-cyan-300 font-bold active:bg-cyan-500 text-lg">W</button>
+            </div>
+            <div class="flex gap-2">
+                <button id="btnTouchLeft" class="touch-btn w-14 h-14 bg-cyan-950/80 border-2 border-cyan-400/60 rounded-full flex items-center justify-center text-cyan-300 font-bold active:bg-cyan-500 text-lg">A</button>
+                <button id="btnTouchReverse" class="touch-btn w-14 h-14 bg-cyan-950/80 border-2 border-cyan-400/60 rounded-full flex items-center justify-center text-cyan-300 font-bold active:bg-cyan-500 text-lg">S</button>
+                <button id="btnTouchRight" class="touch-btn w-14 h-14 bg-cyan-950/80 border-2 border-cyan-400/60 rounded-full flex items-center justify-center text-cyan-300 font-bold active:bg-cyan-500 text-lg">D</button>
+            </div>
+        </div>
+
+        <!-- Action Button (Fire) -->
+        <div class="pointer-events-auto pb-2">
+            <button id="btnTouchFire" class="touch-btn w-20 h-20 bg-red-950/80 border-2 border-red-500/80 rounded-full flex items-center justify-center text-red-300 font-bold active:bg-red-600 text-sm glow-red">FIRE</button>
+        </div>
+    </div>
+
+    <!-- CENTER AUDIO UNMUTE OVERLAY NOTIFICATION -->
+    <div id="audioStartPrompt" class="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex items-center justify-center pointer-events-auto transition-opacity duration-300">
+        <div class="hud-panel p-6 rounded-xl max-w-md text-center border-cyan-400/50 shadow-2xl">
+            <h2 class="text-xl font-bold text-cyan-300 glow-text mb-2">SOLAR WINDS PROOF OF CONCEPT</h2>
+            <p class="text-xs text-slate-300 mb-6 leading-relaxed">
+                Experience top-down inertial space mechanics inspired by the 1993 classic. Controls: <strong class="text-cyan-300">WASD</strong> to pilot, <strong class="text-cyan-300">Spacebar</strong> to shoot.
+            </p>
+            <button id="btnStartGame" class="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg shadow-lg hover:shadow-cyan-500/50 transition-all transform active:scale-95 text-sm uppercase tracking-wider">
+                Initialize Systems
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT GAME LOGIC -->
+    <script>
+        /**
+         * Solar Winds Space Flight Simulator & Combat Engine
+         * Clean modular JavaScript standard ES6 implementation.
+         */
+
+        // --- GLOBAL CANVAS & CONTEXT SETUP ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const radarCanvas = document.getElementById('radarCanvas');
+        const radarCtx = radarCanvas.getContext('2d');
+
+        // Resize Canvas to fill screen seamlessly
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Mobile touch controls detection
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            document.getElementById('touchControls').classList.remove('hidden');
+        }
+
+        // --- GAME SETTINGS & CONFIGURATION ---
+        const CONFIG = {
+            worldSize: 10000,           // Infinite sector boundaries (wrap/clamp)
+            maxSpeed: 14,               // Max ship velocity
+            thrustPower: 0.18,          // Forward engine acceleration force
+            reverseThrustPower: 0.10,   // Reverse thrusters acceleration force
+            rotationSpeed: 0.065,       // Turning rate in radians/frame
+            drag: 0.994,                // Space friction/momentum dampener
+            laserSpeed: 20,             // Laser projectile base muzzle velocity
+            laserCooldown: 120,         // Milliseconds between laser shots
+            maxAsteroids: 45,           // Target practice asteroid density
+            maxDrones: 8                // Dynamic flying practice target drones
+        };
+
+        // --- AUDIO SYNTHESIZER (WEB AUDIO API) ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+                this.thrustOsc = null;
+                this.thrustGain = null;
+                this.isThrustPlaying = false;
+            }
+
+            init() {
+                if (this.ctx) return;
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                    this.setupThrustSynth();
+                } catch (e) {
+                    console.warn("Web Audio API not supported", e);
+                }
+            }
+
+            setupThrustSynth() {
+                if (!this.ctx) return;
+                // Create filtered white noise + low rumble generator for continuous thrust sound
+                const bufferSize = this.ctx.sampleRate * 2;
+                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                const whiteNoise = this.ctx.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 160;
+
+                this.thrustGain = this.ctx.createGain();
+                this.thrustGain.gain.value = 0;
+
+                whiteNoise.connect(filter);
+                filter.connect(this.thrustGain);
+                this.thrustGain.connect(this.ctx.destination);
+                whiteNoise.start();
+            }
+
+            setThrust(active, intensity = 1.0) {
+                if (!this.enabled || !this.ctx || !this.thrustGain) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const targetGain = active ? 0.15 * intensity : 0.0;
+                this.thrustGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
+            }
+
+            playLaser() {
+                if (!this.enabled || !this.ctx) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(110, this.ctx.currentTime + 0.12);
+
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.12);
+            }
+
+            playExplosion(isLarge = false) {
+                if (!this.enabled || !this.ctx) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                // Noise buffer for blast crunch
+                const dur = isLarge ? 0.4 : 0.25;
+                const bufferSize = this.ctx.sampleRate * dur;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(isLarge ? 400 : 800, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(60, this.ctx.currentTime + dur);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(isLarge ? 0.4 : 0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                noise.start();
+            }
+
+            playHitSound() {
+                if (!this.enabled || !this.ctx) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(150, this.ctx.currentTime + 0.05);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+        }
+
+        const audio = new SoundEngine();
+
+        // --- INPUT STATE CONTROLLER ---
+        const keys = {
+            forward: false,
+            reverse: false,
+            left: false,
+            right: false,
+            fire: false
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            switch (e.code) {
+                case 'KeyW': case 'ArrowUp': keys.forward = true; break;
+                case 'KeyS': case 'ArrowDown': keys.reverse = true; break;
+                case 'KeyA': case 'ArrowLeft': keys.left = true; break;
+                case 'KeyD': case 'ArrowRight': keys.right = true; break;
+                case 'Space': keys.fire = true; e.preventDefault(); break;
+            }
+            audio.init();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            switch (e.code) {
+                case 'KeyW': case 'ArrowUp': keys.forward = false; break;
+                case 'KeyS': case 'ArrowDown': keys.reverse = false; break;
+                case 'KeyA': case 'ArrowLeft': keys.left = false; break;
+                case 'KeyD': case 'ArrowRight': keys.right = false; break;
+                case 'Space': keys.fire = false; break;
+            }
+        });
+
+        // Mobile Touch Controls Event Listeners
+        const setupTouchButton = (id, keyName) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            const start = (e) => { e.preventDefault(); keys[keyName] = true; audio.init(); };
+            const end = (e) => { e.preventDefault(); keys[keyName] = false; };
+            btn.addEventListener('touchstart', start);
+            btn.addEventListener('touchend', end);
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+        };
+
+        setupTouchButton('btnTouchThrust', 'forward');
+        setupTouchButton('btnTouchReverse', 'reverse');
+        setupTouchButton('btnTouchLeft', 'left');
+        setupTouchButton('btnTouchRight', 'right');
+        setupTouchButton('btnTouchFire', 'fire');
+
+        // HUD Toggle Buttons State
+        let showGrid = true;
+        let showNebula = true;
+
+        document.getElementById('btnGrid').addEventListener('click', (e) => {
+            showGrid = !showGrid;
+            e.target.innerText = `Grid: ${showGrid ? 'ON' : 'OFF'}`;
+            e.target.classList.toggle('bg-cyan-950/60', showGrid);
+            e.target.classList.toggle('bg-slate-900/60', !showGrid);
+        });
+
+        document.getElementById('btnNebula').addEventListener('click', (e) => {
+            showNebula = !showNebula;
+            e.target.innerText = `Nebula: ${showNebula ? 'ON' : 'OFF'}`;
+        });
+
+        document.getElementById('btnAudio').addEventListener('click', (e) => {
+            audio.enabled = !audio.enabled;
+            e.target.innerText = `Audio: ${audio.enabled ? 'ON' : 'OFF'}`;
+            if (!audio.enabled) audio.setThrust(false);
+        });
+
+        document.getElementById('btnStartGame').addEventListener('click', () => {
+            audio.init();
+            document.getElementById('audioStartPrompt').classList.add('opacity-0', 'pointer-events-none');
+        });
+
+        // --- GAME OBJECT CLASSES ---
+
+        // 1. PLAYER SPACESHIP (Solar Winds Vector Style)
+        class PlayerShip {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.angle = -Math.PI / 2; // Facing straight UP initially
+                this.radius = 18;
+                this.lastShotTime = 0;
+                this.laserHeat = 0; // Heat percentage 0 to 100
+                this.shields = 100;
+            }
+
+            update(deltaTime) {
+                // Angular Rotation (A & D keys)
+                if (keys.left) {
+                    this.angle -= CONFIG.rotationSpeed;
+                }
+                if (keys.right) {
+                    this.angle += CONFIG.rotationSpeed;
+                }
+
+                // Vector Direction unit components
+                const dirX = Math.cos(this.angle);
+                const dirY = Math.sin(this.angle);
+
+                let thrusting = false;
+
+                // Main Forward Thrust (W key)
+                if (keys.forward) {
+                    this.vx += dirX * CONFIG.thrustPower;
+                    this.vy += dirY * CONFIG.thrustPower;
+                    thrusting = true;
+
+                    // Emit Forward Thruster Particles (exhaust out the rear)
+                    particleSystem.emitThrust(
+                        this.x - dirX * 16,
+                        this.y - dirY * 16,
+                        -dirX * 4 + (Math.random() - 0.5) * 1.5 + this.vx * 0.2,
+                        -dirY * 4 + (Math.random() - 0.5) * 1.5 + this.vy * 0.2,
+                        '#00f0ff'
+                    );
+                }
+
+                // Reverse Thrust (S key)
+                if (keys.reverse) {
+                    this.vx -= dirX * CONFIG.reverseThrustPower;
+                    this.vy -= dirY * CONFIG.reverseThrustPower;
+                    thrusting = true;
+
+                    // Emit RCS Maneuvering Jets (exhaust out the front nozzles)
+                    particleSystem.emitThrust(
+                        this.x + dirX * 12 + Math.cos(this.angle + Math.PI/2)*8,
+                        this.y + dirY * 12 + Math.sin(this.angle + Math.PI/2)*8,
+                        dirX * 2 + (Math.random() - 0.5),
+                        dirY * 2 + (Math.random() - 0.5),
+                        '#ff9900'
+                    );
+                    particleSystem.emitThrust(
+                        this.x + dirX * 12 - Math.cos(this.angle + Math.PI/2)*8,
+                        this.y + dirY * 12 - Math.sin(this.angle + Math.PI/2)*8,
+                        dirX * 2 + (Math.random() - 0.5),
+                        dirY * 2 + (Math.random() - 0.5),
+                        '#ff9900'
+                    );
+                }
+
+                // Sound state for engine thrust
+                audio.setThrust(thrusting, keys.forward ? 1.0 : 0.6);
+
+                // Space Momentum & Drag Friction
+                this.vx *= CONFIG.drag;
+                this.vy *= CONFIG.drag;
+
+                // Speed Cap Limit
+                const speed = Math.hypot(this.vx, this.vy);
+                if (speed > CONFIG.maxSpeed) {
+                    this.vx = (this.vx / speed) * CONFIG.maxSpeed;
+                    this.vy = (this.vy / speed) * CONFIG.maxSpeed;
+                }
+
+                // Apply Velocity Position step
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Sector Wraparound Boundaries
+                const halfWorld = CONFIG.worldSize / 2;
+                if (this.x > halfWorld) this.x = -halfWorld;
+                if (this.x < -halfWorld) this.x = halfWorld;
+                if (this.y > halfWorld) this.y = -halfWorld;
+                if (this.y < -halfWorld) this.y = halfWorld;
+
+                // Weapon firing logic
+                if (keys.fire) {
+                    this.shoot();
+                }
+
+                // Laser Heat dissipate over time
+                this.laserHeat = Math.max(0, this.laserHeat - 0.4);
+            }
+
+            shoot() {
+                const now = Date.now();
+                if (now - this.lastShotTime >= CONFIG.laserCooldown && this.laserHeat < 95) {
+                    this.lastShotTime = now;
+                    this.laserHeat = Math.min(100, this.laserHeat + 12);
+
+                    const dirX = Math.cos(this.angle);
+                    const dirY = Math.sin(this.angle);
+
+                    // Muzzle exit position (front nose tip)
+                    const muzzleX = this.x + dirX * (this.radius + 6);
+                    const muzzleY = this.y + dirY * (this.radius + 6);
+
+                    // Laser velocity = Ship velocity + Muzzle Speed
+                    const projVx = this.vx + dirX * CONFIG.laserSpeed;
+                    const projVy = this.vy + dirY * CONFIG.laserSpeed;
+
+                    projectiles.push(new LaserProjectile(muzzleX, muzzleY, projVx, projVy, this.angle));
+
+                    // Dynamic recoil nudge
+                    this.vx -= dirX * 0.15;
+                    this.vy -= dirY * 0.15;
+
+                    // Muzzle flash visual particle effect
+                    for (let i = 0; i < 6; i++) {
+                        particleSystem.emitSpark(
+                            muzzleX, muzzleY,
+                            dirX * 3 + (Math.random() - 0.5) * 2,
+                            dirY * 3 + (Math.random() - 0.5) * 2,
+                            '#00ffff', 15
+                        );
+                    }
+
+                    audio.playLaser();
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Glowing Outer Shield Shell (if intact)
+                if (this.shields > 0) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 4, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(0, 240, 255, ${0.15 + (Math.sin(Date.now() * 0.005) * 0.08)})`;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+
+                // Ship Hull Outline Path (Retro 90s Vector Graphic aesthetics)
+                ctx.beginPath();
+                // Nose Tip
+                ctx.moveTo(22, 0);
+                // Right Wingtip
+                ctx.lineTo(-14, 16);
+                // Right Rear Notch
+                ctx.lineTo(-10, 8);
+                // Rear Center Engine Notch
+                ctx.lineTo(-16, 5);
+                ctx.lineTo(-16, -5);
+                // Left Rear Notch
+                ctx.lineTo(-10, -8);
+                // Left Wingtip
+                ctx.lineTo(-14, -16);
+                ctx.closePath();
+
+                // Dark Metallic Hull Fill
+                ctx.fillStyle = '#061325';
+                ctx.fill();
+
+                // Glowing Cyan Vector Borders
+                ctx.strokeStyle = '#00f0ff';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = '#00f0ff';
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+
+                // Cockpit Glass Canopy
+                ctx.beginPath();
+                ctx.ellipse(3, 0, 7, 3.5, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#003366';
+                ctx.fill();
+                ctx.strokeStyle = '#66ffff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Engine Nozzles Details
+                ctx.fillStyle = '#ff9900';
+                ctx.fillRect(-16, -4, 2, 8);
+
+                ctx.restore();
+            }
+        }
+
+        // 2. LASER PROJECTILES
+        class LaserProjectile {
+            constructor(x, y, vx, vy, angle) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.angle = angle;
+                this.life = 0;
+                this.maxLife = 55; // Frames before despawning
+                this.radius = 3;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life++;
+
+                // Spawn glowing plasma trail particles
+                if (this.life % 2 === 0) {
+                    particleSystem.emitSpark(
+                        this.x, this.y,
+                        (Math.random() - 0.5) * 0.5,
+                        (Math.random() - 0.5) * 0.5,
+                        '#00f0ff', 10
+                    );
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Laser Beam Vector Capsule
+                ctx.beginPath();
+                ctx.moveTo(-10, 0);
+                ctx.lineTo(10, 0);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#00f0ff';
+                ctx.shadowBlur = 12;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // 3. TARGET ASTEROIDS (Interactive Destructible Objects)
+        class Asteroid {
+            constructor(x, y, size = 3) {
+                this.x = x;
+                this.y = y;
+                this.size = size; // 3 = Large, 2 = Medium, 1 = Small
+                this.radius = size * 16;
+                this.vx = (Math.random() - 0.5) * (4 / size);
+                this.vy = (Math.random() - 0.5) * (4 / size);
+                this.angle = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.03;
+
+                // Procedurally generated jagged outline points
+                this.numPoints = 8 + Math.floor(Math.random() * 5);
+                this.offsets = [];
+                for (let i = 0; i < this.numPoints; i++) {
+                    this.offsets.push(0.75 + Math.random() * 0.5);
+                }
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle += this.rotSpeed;
+
+                // Sector Wraparound
+                const halfWorld = CONFIG.worldSize / 2;
+                if (this.x > halfWorld) this.x = -halfWorld;
+                if (this.x < -halfWorld) this.x = halfWorld;
+                if (this.y > halfWorld) this.y = -halfWorld;
+                if (this.y < -halfWorld) this.y = halfWorld;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                ctx.beginPath();
+                for (let i = 0; i < this.numPoints; i++) {
+                    const theta = (i / this.numPoints) * Math.PI * 2;
+                    const r = this.radius * this.offsets[i];
+                    const px = Math.cos(theta) * r;
+                    const py = Math.sin(theta) * r;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+
+                ctx.fillStyle = '#0a101d';
+                ctx.fill();
+                ctx.strokeStyle = '#2e5d88';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // 4. FLYING TARGET DRONE (AI Practice Targets)
+        class TargetDrone {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.radius = 16;
+                this.angle = 0;
+                this.hp = 3;
+            }
+
+            update(player) {
+                // Smooth wandering movement AI
+                this.angle += 0.02;
+                this.vx += Math.cos(this.angle) * 0.05;
+                this.vy += Math.sin(this.angle) * 0.05;
+
+                // Speed dampening
+                const spd = Math.hypot(this.vx, this.vy);
+                if (spd > 3) {
+                    this.vx = (this.vx / spd) * 3;
+                    this.vy = (this.vy / spd) * 3;
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Rotating Pulsing Target Ring
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = '#ff3366';
+                ctx.lineWidth = 1.5;
+                ctx.shadowColor = '#ff3366';
+                ctx.shadowBlur = 8;
+                ctx.stroke();
+
+                // Crosshairs
+                ctx.beginPath();
+                ctx.moveTo(-this.radius - 4, 0); ctx.lineTo(this.radius + 4, 0);
+                ctx.moveTo(0, -this.radius - 4); ctx.lineTo(0, this.radius + 4);
+                ctx.strokeStyle = 'rgba(255, 51, 102, 0.5)';
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // 5. DYNAMIC PARTICLE SYSTEM (Sparks, Exhaust, Rock Debris)
+        class ParticleSystem {
+            constructor() {
+                this.particles = [];
+            }
+
+            emitThrust(x, y, vx, vy, color) {
+                this.particles.push({
+                    x, y, vx, vy,
+                    color,
+                    life: 1.0,
+                    decay: 0.04 + Math.random() * 0.03,
+                    size: 2 + Math.random() * 3
+                });
+            }
+
+            emitSpark(x, y, vx, vy, color, maxFrames = 25) {
+                this.particles.push({
+                    x, y, vx, vy,
+                    color,
+                    life: 1.0,
+                    decay: 1 / maxFrames,
+                    size: 1 + Math.random() * 2
+                });
+            }
+
+            emitExplosion(x, y, count = 25, color = '#ffaa00') {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 6;
+                    this.particles.push({
+                        x, y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        color,
+                        life: 1.0,
+                        decay: 0.02 + Math.random() * 0.03,
+                        size: 2 + Math.random() * 4
+                    });
+                }
+            }
+
+            update() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= p.decay;
+
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            draw(ctx) {
+                for (const p of this.particles) {
+                    ctx.save();
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 6;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+        }
+
+        // --- ENVIRONMENT & PARALLAX BACKGROUND LAYERS ---
+        class Starfield {
+            constructor(count = 350) {
+                this.stars = [];
+                for (let i = 0; i < count; i++) {
+                    this.stars.push({
+                        x: (Math.random() - 0.5) * CONFIG.worldSize,
+                        y: (Math.random() - 0.5) * CONFIG.worldSize,
+                        size: Math.random() * 1.8 + 0.4,
+                        layer: Math.random(), // Parallax depth factor (0.1 = far, 0.9 = close)
+                        color: ['#ffffff', '#88dffc', '#ffd480', '#e0c2ff'][Math.floor(Math.random() * 4)]
+                    });
+                }
+
+                // Foreground Space Dust Particles for high velocity depth
+                this.dust = [];
+                for (let i = 0; i < 60; i++) {
+                    this.dust.push({
+                        x: (Math.random() - 0.5) * 2000,
+                        y: (Math.random() - 0.5) * 2000,
+                        size: Math.random() * 1.5 + 0.5
+                    });
+                }
+            }
+
+            draw(ctx, camX, camY) {
+                // Parallax Layer Stars
+                for (const star of this.stars) {
+                    // Offset based on parallax layer depth
+                    const px = star.x - camX * star.layer;
+                    const py = star.y - camY * star.layer;
+
+                    // Screen wrap calculations for continuous starry expanse
+                    const screenX = ((px % canvas.width) + canvas.width) % canvas.width;
+                    const screenY = ((py % canvas.height) + canvas.height) % canvas.height;
+
+                    ctx.fillStyle = star.color;
+                    ctx.fillRect(screenX, screenY, star.size, star.size);
+                }
+            }
+
+            drawDust(ctx, player) {
+                // Speed dust floating in camera view
+                ctx.fillStyle = 'rgba(200, 240, 255, 0.4)';
+                for (const d of this.dust) {
+                    // Dust moves inverse to camera motion for real velocity feel
+                    let dx = (d.x - player.x) % canvas.width;
+                    let dy = (d.y - player.y) % canvas.height;
+
+                    if (dx < 0) dx += canvas.width;
+                    if (dy < 0) dy += canvas.height;
+
+                    ctx.fillRect(dx, dy, d.size, d.size);
+                }
+            }
+        }
+
+        // Procedural Gas Nebula Renderer
+        class NebulaRenderer {
+            constructor() {
+                this.clouds = [
+                    { x: -800, y: -600, radius: 900, color1: 'rgba(0, 100, 200, 0.12)', color2: 'rgba(0,0,0,0)' },
+                    { x: 1200, y: 800, radius: 1100, color1: 'rgba(150, 0, 200, 0.10)', color2: 'rgba(0,0,0,0)' },
+                    { x: 400, y: -1400, radius: 800, color1: 'rgba(0, 200, 150, 0.08)', color2: 'rgba(0,0,0,0)' }
+                ];
+            }
+
+            draw(ctx) {
+                if (!showNebula) return;
+                for (const cloud of this.clouds) {
+                    const grad = ctx.createRadialGradient(cloud.x, cloud.y, 10, cloud.x, cloud.y, cloud.radius);
+                    grad.addColorStop(0, cloud.color1);
+                    grad.addColorStop(1, cloud.color2);
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(cloud.x, cloud.y, cloud.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Grid Sector Overlay
+        function drawSectorGrid(ctx, camX, camY) {
+            if (!showGrid) return;
+
+            const gridSize = 300;
+            const startX = Math.floor((camX - canvas.width / 2) / gridSize) * gridSize;
+            const endX = startX + canvas.width + gridSize * 2;
+            const startY = Math.floor((camY - canvas.height / 2) / gridSize) * gridSize;
+            const endY = startY + canvas.height + gridSize * 2;
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.06)';
+            ctx.lineWidth = 1;
+
+            for (let x = startX; x <= endX; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, endY);
+                ctx.stroke();
+            }
+
+            for (let y = startY; y <= endY; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(startX, y);
+                ctx.lineTo(endX, y);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // --- INSTANTIATE GAME ENTITIES ---
+        const player = new PlayerShip(0, 0);
+        const starfield = new Starfield();
+        const nebula = new NebulaRenderer();
+        const particleSystem = new ParticleSystem();
+
+        const projectiles = [];
+        const asteroids = [];
+        const drones = [];
+
+        // Spawn Initial Sector Asteroids
+        for (let i = 0; i < CONFIG.maxAsteroids; i++) {
+            const dist = 300 + Math.random() * (CONFIG.worldSize / 2 - 400);
+            const angle = Math.random() * Math.PI * 2;
+            asteroids.push(new Asteroid(Math.cos(angle) * dist, Math.sin(angle) * dist, Math.floor(Math.random() * 3) + 1));
+        }
+
+        // Spawn Target Drones
+        for (let i = 0; i < CONFIG.maxDrones; i++) {
+            const dist = 400 + Math.random() * 2000;
+            const angle = Math.random() * Math.PI * 2;
+            drones.push(new TargetDrone(Math.cos(angle) * dist, Math.sin(angle) * dist));
+        }
+
+        // --- COLLISION DETECTION & PHYSICS ---
+        function checkCollisions() {
+            // Projectiles vs Asteroids
+            for (let pIdx = projectiles.length - 1; pIdx >= 0; pIdx--) {
+                const proj = projectiles[pIdx];
+
+                for (let aIdx = asteroids.length - 1; aIdx >= 0; aIdx--) {
+                    const ast = asteroids[aIdx];
+                    const dist = Math.hypot(proj.x - ast.x, proj.y - ast.y);
+
+                    if (dist < ast.radius + proj.radius) {
+                        // Hit confirmed!
+                        particleSystem.emitExplosion(proj.x, proj.y, 12, '#00ffff');
+                        projectiles.splice(pIdx, 1);
+
+                        // Split Asteroids into smaller fragments
+                        if (ast.size > 1) {
+                            asteroids.push(new Asteroid(ast.x, ast.y, ast.size - 1));
+                            asteroids.push(new Asteroid(ast.x, ast.y, ast.size - 1));
+                            audio.playHitSound();
+                        } else {
+                            audio.playExplosion(false);
+                        }
+
+                        asteroids.splice(aIdx, 1);
+                        break;
+                    }
+                }
+            }
+
+            // Projectiles vs Target Drones
+            for (let pIdx = projectiles.length - 1; pIdx >= 0; pIdx--) {
+                const proj = projectiles[pIdx];
+
+                for (let dIdx = drones.length - 1; dIdx >= 0; dIdx--) {
+                    const drone = drones[dIdx];
+                    const dist = Math.hypot(proj.x - drone.x, proj.y - drone.y);
+
+                    if (dist < drone.radius + proj.radius) {
+                        drone.hp--;
+                        particleSystem.emitExplosion(proj.x, proj.y, 15, '#ff3366');
+                        projectiles.splice(pIdx, 1);
+
+                        if (drone.hp <= 0) {
+                            audio.playExplosion(true);
+                            particleSystem.emitExplosion(drone.x, drone.y, 40, '#ff9900');
+                            drones.splice(dIdx, 1);
+
+                            // Respawn new target drone in distance
+                            setTimeout(() => {
+                                const angle = Math.random() * Math.PI * 2;
+                                drones.push(new TargetDrone(player.x + Math.cos(angle) * 1200, player.y + Math.sin(angle) * 1200));
+                            }, 4000);
+                        } else {
+                            audio.playHitSound();
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // --- RADAR HUD RENDERING ---
+        function drawRadar() {
+            const rWidth = radarCanvas.width;
+            const rHeight = radarCanvas.height;
+            const center = rWidth / 2;
+            const range = 2200; // Radar scan distance
+
+            radarCtx.clearRect(0, 0, rWidth, rHeight);
+
+            // Radar Grid Rings
+            radarCtx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+            radarCtx.lineWidth = 1;
+            radarCtx.beginPath();
+            radarCtx.arc(center, center, center * 0.4, 0, Math.PI * 2);
+            radarCtx.arc(center, center, center * 0.8, 0, Math.PI * 2);
+            radarCtx.stroke();
+
+            // Radar Sweep Cone Line
+            const sweepAngle = (Date.now() * 0.003) % (Math.PI * 2);
+            radarCtx.beginPath();
+            radarCtx.moveTo(center, center);
+            radarCtx.lineTo(center + Math.cos(sweepAngle) * center, center + Math.sin(sweepAngle) * center);
+            radarCtx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+            radarCtx.stroke();
+
+            // Render Asteroid Blips
+            radarCtx.fillStyle = '#6688aa';
+            for (const ast of asteroids) {
+                const dx = ast.x - player.x;
+                const dy = ast.y - player.y;
+                if (Math.hypot(dx, dy) < range) {
+                    const rx = center + (dx / range) * center;
+                    const ry = center + (dy / range) * center;
+                    radarCtx.fillRect(rx - 1, ry - 1, 2, 2);
+                }
+            }
+
+            // Render Target Drone Blips (Pulsing Red)
+            radarCtx.fillStyle = '#ff3366';
+            for (const drone of drones) {
+                const dx = drone.x - player.x;
+                const dy = drone.y - player.y;
+                if (Math.hypot(dx, dy) < range) {
+                    const rx = center + (dx / range) * center;
+                    const ry = center + (dy / range) * center;
+                    radarCtx.beginPath();
+                    radarCtx.arc(rx, ry, 2.5, 0, Math.PI * 2);
+                    radarCtx.fill();
+                }
+            }
+
+            // Center Player Blip (Cyan Arrow Heading)
+            radarCtx.save();
+            radarCtx.translate(center, center);
+            radarCtx.rotate(player.angle);
+            radarCtx.fillStyle = '#00f0ff';
+            radarCtx.beginPath();
+            radarCtx.moveTo(5, 0);
+            radarCtx.lineTo(-4, -3);
+            radarCtx.lineTo(-4, 3);
+            radarCtx.closePath();
+            radarCtx.fill();
+            radarCtx.restore();
+        }
+
+        // --- HUD TELEMETRY UPDATE ---
+        const speedValEl = document.getElementById('speedVal');
+        const headingValEl = document.getElementById('headingVal');
+        const coordsValEl = document.getElementById('coordsVal');
+        const thrustValEl = document.getElementById('thrustVal');
+        const heatBarEl = document.getElementById('heatBar');
+        const heatTextEl = document.getElementById('heatText');
+
+        function updateHUD() {
+            const speed = Math.hypot(player.vx, player.vy);
+            const speedKnots = (speed * 15).toFixed(1);
+            speedValEl.innerText = `${speedKnots} kn`;
+
+            // Heading Angle Conversion (0 to 360 deg)
+            let deg = Math.round((player.angle * (180 / Math.PI) + 90) % 360);
+            if (deg < 0) deg += 360;
+            headingValEl.innerText = `${deg.toString().padStart(3, '0')}°`;
+
+            coordsValEl.innerText = `X: ${Math.round(player.x)} | Y: ${Math.round(player.y)}`;
+
+            if (keys.forward) thrustValEl.innerText = 'FORWARD [100%]';
+            else if (keys.reverse) thrustValEl.innerText = 'REVERSE [RCS]';
+            else thrustValEl.innerText = 'IDLE (DRIFT)';
+
+            // Heat bar fill
+            const heatPct = Math.round(player.laserHeat);
+            heatBarEl.style.width = `${heatPct}%`;
+            heatTextEl.innerText = `${heatPct}%`;
+            if (heatPct > 80) {
+                heatBarEl.classList.remove('bg-cyan-400');
+                heatBarEl.classList.add('bg-red-500');
+            } else {
+                heatBarEl.classList.remove('bg-red-500');
+                heatBarEl.classList.add('bg-cyan-400');
+            }
+        }
+
+        // --- MAIN GAME LOOP ---
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fps = 60;
+        const fpsDisplay = document.getElementById('fpsDisplay');
+
+        function gameLoop(currentTime) {
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            // FPS Counter
+            frameCount++;
+            if (frameCount % 30 === 0) {
+                fps = Math.round(1 / deltaTime);
+                fpsDisplay.innerText = `${fps} FPS`;
+            }
+
+            // 1. UPDATE STATE
+            player.update(deltaTime);
+
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                projectiles[i].update();
+                if (projectiles[i].life > projectiles[i].maxLife) {
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            for (const ast of asteroids) ast.update();
+            for (const drone of drones) drone.update(player);
+            particleSystem.update();
+
+            checkCollisions();
+
+            // 2. RENDER SCENE
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background Stars (Parallax relative to camera)
+            starfield.draw(ctx, player.x, player.y);
+
+            // CAMERA TRANSFORM (Center view on Player Ship)
+            ctx.save();
+            ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
+
+            // Draw Sector Grid & Nebulae
+            nebula.draw(ctx);
+            drawSectorGrid(ctx, player.x, player.y);
+
+            // Draw Game World Entities
+            for (const ast of asteroids) ast.draw(ctx);
+            for (const drone of drones) drone.draw(ctx);
+            for (const proj of projectiles) proj.draw(ctx);
+            particleSystem.draw(ctx);
+            player.draw(ctx);
+
+            ctx.restore();
+
+            // Draw Foreground Viewport Particles & HUD
+            starfield.drawDust(ctx, player);
+            drawRadar();
+            updateHUD();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game loop when window loads
+        window.onload = function() {
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
